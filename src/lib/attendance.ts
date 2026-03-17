@@ -1,11 +1,17 @@
-import { format } from 'date-fns'
-import type { AttendanceStatus, LocationMode } from '@/types'
+import { z } from 'zod'
+import type { AttendanceStatus } from '@/types'
 
-// ── Geofence ─────────────────────────────────────────────────
+// ── School timezone ────────────────────────────────────────────
+// All date/time logic must operate in school local time, NOT server UTC.
 
-const SCHOOL_LAT  = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT  ?? '13.736717')
-const SCHOOL_LNG  = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG  ?? '100.523186')
-const RADIUS_M    = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '300')
+const SCHOOL_TZ = process.env.NEXT_PUBLIC_SCHOOL_TZ ?? 'Asia/Bangkok'
+const CUTOFF    = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'   // HH:mm
+
+// ── Geofence ───────────────────────────────────────────────────
+
+const SCHOOL_LAT = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT  ?? '13.736717')
+const SCHOOL_LNG = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG  ?? '100.523186')
+const RADIUS_M   = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '500')
 
 /** Haversine distance in metres */
 export function distanceMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -22,23 +28,62 @@ export function isWithinGeofence(lat: number, lng: number): boolean {
   return distanceMetres(lat, lng, SCHOOL_LAT, SCHOOL_LNG) <= RADIUS_M
 }
 
-// ── Attendance business rules ─────────────────────────────────
+// ── Internal timezone helper ───────────────────────────────────
 
-const CUTOFF = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:30'   // HH:mm
+function schoolHM(date: Date): { h: number; m: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: SCHOOL_TZ,
+    hour:     '2-digit',
+    minute:   '2-digit',
+    hour12:   false,
+  }).formatToParts(date)
+  const get = (type: string) => parseInt(parts.find(p => p.type === type)!.value)
+  return { h: get('hour') % 24, m: get('minute') }  // % 24 handles '24' returned for midnight
+}
 
+// ── Attendance business rules ──────────────────────────────────
+
+/**
+ * Returns today's date as YYYY-MM-DD in the school's local timezone.
+ * Using sv-SE locale because it formats as YYYY-MM-DD by default.
+ */
+export function todayDate(): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: SCHOOL_TZ }).format(new Date())
+}
+
+/**
+ * Determines 'present' or 'late' based on the school's cutoff time.
+ * checkInAt should be a UTC Date (as returned by new Date()).
+ */
 export function resolveStatus(checkInAt: Date): AttendanceStatus {
   const [cutH, cutM] = CUTOFF.split(':').map(Number)
-  const cutoff = new Date(checkInAt)
-  cutoff.setHours(cutH, cutM, 0, 0)
-  return checkInAt <= cutoff ? 'present' : 'late'
+  const { h, m } = schoolHM(checkInAt)
+  return h * 60 + m <= cutH * 60 + cutM ? 'present' : 'late'
 }
 
-export function todayDate(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+/**
+ * Returns current time as total minutes since midnight in school timezone.
+ * Used by checkout to check if it's past the checkout cutoff.
+ */
+export function currentTimeMinutes(): number {
+  const { h, m } = schoolHM(new Date())
+  return h * 60 + m
 }
 
-// ── Validation schemas (used in API routes) ──────────────────
-import { z } from 'zod'
+/**
+ * Formats a Date as HH:mm in school timezone.
+ * Use this instead of date-fns format() for any time displayed to users.
+ */
+export function formatTimeSchool(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: SCHOOL_TZ,
+    hour:     '2-digit',
+    minute:   '2-digit',
+    hour12:   false,
+  }).format(date)
+}
+
+// ── Validation schemas (used in API routes) ───────────────────
 
 export const checkInSchema = z.object({
   location_mode: z.enum(['campus', 'wfh']),

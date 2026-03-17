@@ -19,8 +19,8 @@ const dmMono = DM_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'TOAS — Teacher Attendance',
-  description: 'ระบบเช็คการเข้า-ออกครูออนไลน์',
+  title: 'TATC Check — ระบบบันทึกการเข้า ออก',
+  description: 'ระบบบันทึกการเข้า ออก',
   manifest: '/manifest.json',
 }
 

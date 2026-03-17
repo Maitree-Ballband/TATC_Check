@@ -4,3 +4,6 @@ node_modules/
 .env*.local
 dist/
 *.log
+
+# Staff whitelist — contains national IDs (PII), never commit
+data/

@@ -1,26 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { createServerClient } from '@/lib/supabase'
-import { todayDate } from '@/lib/attendance'
+import * as db from '@/lib/db'
+import { todayDate, currentTimeMinutes } from '@/lib/attendance'
 
-// POST /api/attendance/checkout
 export async function POST(_req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db   = createServerClient()
-  const date = todayDate()
-  const now  = new Date()
-
-  const { data: existing } = await db
-    .from('attendance_records')
-    .select('id, check_in_at, check_out_at')
-    .eq('user_id', session.user.id)
-    .eq('date', date)
-    .maybeSingle()
+  const date     = todayDate()
+  const existing = await db.getTodayRecord(session.user.id, date)
 
   if (!existing?.check_in_at) {
     return NextResponse.json({ error: 'not_checked_in' }, { status: 409 })
@@ -29,13 +20,18 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'already_checked_out' }, { status: 409 })
   }
 
-  const { data: record, error } = await db
-    .from('attendance_records')
-    .update({ check_out_at: now.toISOString() })
-    .eq('id', existing.id)
-    .select()
-    .single()
+  const cutoff       = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'
+  const [cutH, cutM] = cutoff.split(':').map(Number)
+  // currentTimeMinutes() uses school timezone — correct regardless of server UTC offset
+  if (currentTimeMinutes() < cutH * 60 + cutM) {
+    return NextResponse.json({ error: 'too_early', available_after: cutoff }, { status: 422 })
+  }
 
-  if (error) return NextResponse.json({ error: 'db_error' }, { status: 500 })
-  return NextResponse.json({ record, checked_out_at: now.toISOString() })
+  try {
+    const record = await db.updateCheckOut(existing.id, new Date().toISOString())
+    return NextResponse.json({ record, checked_out_at: record.check_out_at })
+  } catch (err) {
+    console.error('[checkout]', err)
+    return NextResponse.json({ error: 'db_error' }, { status: 500 })
+  }
 }

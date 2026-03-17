@@ -1,7 +1,7 @@
 {
-  "name": "TOAS — Teacher Attendance",
-  "short_name": "TOAS",
-  "description": "ระบบเช็คการเข้า-ออกครูออนไลน์",
+  "name": "TATC Check",
+  "short_name": "TATC Check",
+  "description": "ระบบบันทึกการเข้า ออก",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f1014",

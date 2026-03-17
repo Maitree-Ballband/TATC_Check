@@ -2,58 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Thai fonts ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+
 :root {
-  --bg-base:     #0f1014;
-  --bg-surface:  #16181d;
-  --bg-raised:   #1d2026;
-  --bg-hover:    #23262e;
-  --bg-active:   #2a2e38;
+  /* Backgrounds */
+  --bg-base:     #f2f4f8;
+  --bg-surface:  #ffffff;
+  --bg-raised:   #f8f9fc;
+  --bg-hover:    #eef0f6;
+  --bg-active:   #e4e8f2;
 
-  --line:        #2c2f38;
-  --line-mid:    #383c48;
+  /* Borders */
+  --line:        #e2e6f0;
+  --line-mid:    #cdd2e0;
 
-  --text-primary:   #eceef2;
-  --text-secondary: #8b909e;
-  --text-muted:     #555a68;
-  --text-dim:       #373c48;
+  /* Text */
+  --text-primary:   #1e2433;
+  --text-secondary: #4a5470;
+  --text-muted:     #8892a8;
+  --text-dim:       #b8bece;
 
-  --accent:      #c8d4f0;
-  --accent-dim:  #1e2a42;
+  /* Accent (blue) */
+  --accent:      #3d5af1;
+  --accent-dim:  #eaedfd;
 
-  --ok:          #5fb882;
-  --ok-dim:      #0e2218;
-  --ok-text:     #7fd49e;
+  /* Status: OK / present */
+  --ok:          #16a34a;
+  --ok-dim:      #dcfce7;
+  --ok-text:     #15803d;
 
-  --warn:        #e8a44a;
-  --warn-dim:    #261a07;
-  --warn-text:   #f0be79;
+  /* Status: warn / late */
+  --warn:        #d97706;
+  --warn-dim:    #fef3c7;
+  --warn-text:   #b45309;
 
-  --danger:      #e05a5a;
-  --danger-dim:  #250f0f;
-  --danger-text: #f07070;
+  /* Status: danger / absent */
+  --danger:      #dc2626;
+  --danger-dim:  #fee2e2;
+  --danger-text: #b91c1c;
 
+  /* Neutral */
   --neutral:     #6b7280;
-  --neutral-dim: #1a1c22;
+  --neutral-dim: #f3f4f6;
 
-  --blue:        #5b8ef0;
-  --blue-dim:    #121b36;
-  --blue-text:   #8ab0f8;
+  /* Blue / WFH */
+  --blue:        #2563eb;
+  --blue-dim:    #dbeafe;
+  --blue-text:   #1d4ed8;
 
   --r-sm: 4px;
   --r-md: 8px;
   --r-lg: 12px;
+
+  /* Font families */
+  --font-heading: 'Sarabun', sans-serif;
+  --font-body:    'Sarabun', sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 15px; }
+html { font-size: 18px; }
 
 body {
-  font-family: var(--font-sans), 'Sarabun', sans-serif;
+  font-family: 'Sarabun', sans-serif;
   background: var(--bg-base);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
+  line-height: 1.8;
+  font-size: 17px;
 }
 
 /* Scrollbar */
@@ -67,12 +84,59 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes pulse {
-  0%, 100% { transform: scale(1);   opacity: .3; }
+  0%, 100% { transform: scale(1);   opacity: .4; }
   50%       { transform: scale(1.8); opacity: 0;  }
 }
 
-.animate-fade-up        { animation: fadeUp .35s ease both; }
-.animate-fade-up-d1     { animation: fadeUp .35s ease .06s  both; }
-.animate-fade-up-d2     { animation: fadeUp .35s ease .12s  both; }
-.animate-fade-up-d3     { animation: fadeUp .35s ease .18s  both; }
-.animate-fade-up-d4     { animation: fadeUp .35s ease .24s  both; }
+.animate-fade-up        { animation: fadeUp .3s ease both; }
+.animate-fade-up-d1     { animation: fadeUp .3s ease .05s  both; }
+.animate-fade-up-d2     { animation: fadeUp .3s ease .10s  both; }
+.animate-fade-up-d3     { animation: fadeUp .3s ease .15s  both; }
+.animate-fade-up-d4     { animation: fadeUp .3s ease .20s  both; }
+
+/* Cards & surfaces */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: 0 1px 4px rgba(30,36,51,.06);
+}
+
+/* Input base */
+input, select, textarea {
+  outline: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(61,90,241,.12);
+}
+
+/* ── Sarabun weight utilities ───────────────────────────────── */
+.sarabun-thin            { font-family: "Sarabun", sans-serif; font-weight: 100; font-style: normal; }
+.sarabun-extralight      { font-family: "Sarabun", sans-serif; font-weight: 200; font-style: normal; }
+.sarabun-light           { font-family: "Sarabun", sans-serif; font-weight: 300; font-style: normal; }
+.sarabun-regular         { font-family: "Sarabun", sans-serif; font-weight: 400; font-style: normal; }
+.sarabun-medium          { font-family: "Sarabun", sans-serif; font-weight: 500; font-style: normal; }
+.sarabun-semibold        { font-family: "Sarabun", sans-serif; font-weight: 600; font-style: normal; }
+.sarabun-bold            { font-family: "Sarabun", sans-serif; font-weight: 700; font-style: normal; }
+.sarabun-extrabold       { font-family: "Sarabun", sans-serif; font-weight: 800; font-style: normal; }
+.sarabun-thin-italic     { font-family: "Sarabun", sans-serif; font-weight: 100; font-style: italic; }
+.sarabun-extralight-italic { font-family: "Sarabun", sans-serif; font-weight: 200; font-style: italic; }
+.sarabun-light-italic    { font-family: "Sarabun", sans-serif; font-weight: 300; font-style: italic; }
+.sarabun-regular-italic  { font-family: "Sarabun", sans-serif; font-weight: 400; font-style: italic; }
+.sarabun-medium-italic   { font-family: "Sarabun", sans-serif; font-weight: 500; font-style: italic; }
+.sarabun-semibold-italic { font-family: "Sarabun", sans-serif; font-weight: 600; font-style: italic; }
+.sarabun-bold-italic     { font-family: "Sarabun", sans-serif; font-weight: 700; font-style: italic; }
+.sarabun-extrabold-italic { font-family: "Sarabun", sans-serif; font-weight: 800; font-style: italic; }
+
+/* ── Dashboard table ─────────────────────────────────────────── */
+.dash-row:hover { background: var(--bg-hover) !important; }
+
+/* ── Sign-in page layout ────────────────────────────────────── */
+.signin-wrap      { display: flex; min-height: 100vh; font-family: 'Sarabun', sans-serif; }
+.signin-brand     { flex: 0 0 52%; display: flex; flex-direction: column; justify-content: space-between; padding: 52px 60px; background: #0d1117; position: relative; overflow: hidden; }
+.signin-form-side { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 60px; background: var(--bg-base); }
+@media (max-width: 860px) {
+  .signin-brand     { display: none; }
+  .signin-form-side { padding: 40px 28px; }
+}

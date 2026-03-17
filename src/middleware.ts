@@ -1,19 +1,28 @@
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
 
+const ADMIN_ONLY  = ['/admin', '/report']
+const EXEC_PLUS   = ['/dashboard', '/presence']  // admin + executive
+
 export default withAuth(
   function middleware(req) {
     const token    = req.nextauth.token
+    const role     = token?.role as string | undefined
     const pathname = req.nextUrl.pathname
 
-    // Redirect admin to /dashboard, teachers to /checkin
+    // Redirect root based on role
     if (pathname === '/') {
-      const dest = token?.role === 'admin' ? '/dashboard' : '/checkin'
+      const dest = role === 'admin' ? '/dashboard' : '/checkin'
       return NextResponse.redirect(new URL(dest, req.url))
     }
 
-    // Block teachers from admin routes
-    if (pathname.startsWith('/dashboard') && token?.role !== 'admin') {
+    // Admin-only pages (includes /admin/* and /report/*)
+    if (ADMIN_ONLY.some(p => pathname.startsWith(p)) && role !== 'admin') {
+      return NextResponse.redirect(new URL('/checkin', req.url))
+    }
+
+    // Executive + admin pages
+    if (EXEC_PLUS.some(p => pathname.startsWith(p)) && role !== 'admin' && role !== 'executive') {
       return NextResponse.redirect(new URL('/checkin', req.url))
     }
 
@@ -29,6 +38,7 @@ export default withAuth(
 export const config = {
   matcher: [
     '/',
+    '/admin/:path*',
     '/dashboard/:path*',
     '/checkin/:path*',
     '/presence/:path*',

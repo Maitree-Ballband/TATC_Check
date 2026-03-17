@@ -8,18 +8,20 @@ declare module 'next-auth' {
       name?:   string | null
       email?:  string | null
       image?:  string | null
-      role:    'teacher' | 'admin'
-      nameTh:  string
-      dept:    string | null
+      role:      'teacher' | 'admin' | 'executive'
+      nameTh:    string
+      dept:      string | null
+      isPending: boolean
     }
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    userId?: string
-    role?:   string
-    nameTh?: string
-    dept?:   string | null
+    userId?:    string
+    role?:      string
+    nameTh?:    string
+    dept?:      string | null
+    isPending?: boolean
   }
 }
