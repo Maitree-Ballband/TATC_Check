@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOAS — Teacher Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-base:#0f1014;--bg-surface:#16181d;--bg-raised:#1d2026;--bg-hover:#23262e;--bg-active:#2a2e38;
+  --line:#2c2f38;--line-mid:#383c48;
+  --text-primary:#eceef2;--text-secondary:#8b909e;--text-muted:#555a68;--text-dim:#373c48;
+  --accent:#c8d4f0;--accent-dim:#1e2a42;
+  --ok:#5fb882;--ok-dim:#0e2218;--ok-text:#7fd49e;
+  --warn:#e8a44a;--warn-dim:#261a07;--warn-text:#f0be79;
+  --danger:#e05a5a;--danger-dim:#250f0f;--danger-text:#f07070;
+  --neutral:#6b7280;--neutral-dim:#1a1c22;
+  --blue:#5b8ef0;--blue-dim:#121b36;--blue-text:#8ab0f8;
+  --r-sm:4px;--r-md:8px;--r-lg:12px;
+  --font-sans:'DM Sans','Sarabun',sans-serif;--font-mono:'DM Mono',monospace;
+}
+html{font-size:15px}
+body{font-family:var(--font-sans);background:var(--bg-base);color:var(--text-primary);min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased}
+.app{display:flex;height:100vh;overflow:hidden}
+
+.sidebar{width:224px;flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-brand{padding:20px 18px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.brand-mark{width:28px;height:28px;background:var(--accent);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-mark span{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--bg-base);letter-spacing:-0.5px}
+.brand-name{font-size:13px;font-weight:600;color:var(--text-primary);letter-spacing:.01em}
+.brand-sub{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:.04em;text-transform:uppercase}
+.sidebar-section{padding:10px 0}
+.sidebar-label{font-size:10px;font-weight:500;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase;padding:0 18px 6px;font-family:var(--font-mono)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 18px;font-size:13.5px;color:var(--text-secondary);cursor:pointer;transition:background .12s,color .12s;position:relative;user-select:none}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:2px;background:var(--accent);border-radius:0 2px 2px 0}
+.nav-icon{width:16px;height:16px;opacity:.7;flex-shrink:0}
+.nav-item.active .nav-icon{opacity:1}
+.nav-badge{margin-left:auto;background:var(--warn-dim);color:var(--warn-text);border:1px solid rgba(232,164,74,.2);font-size:10px;font-family:var(--font-mono);padding:1px 6px;border-radius:99px;font-weight:500}
+.sidebar-bottom{margin-top:auto;border-top:1px solid var(--line);padding:14px 18px}
+.user-info{display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:var(--r-md);padding:6px 8px;margin:-6px -8px;transition:background .12s}
+.user-info:hover{background:var(--bg-hover)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--bg-active);border:1px solid var(--line-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--accent);flex-shrink:0}
+.user-meta{flex:1;min-width:0}
+.user-name{font-size:12.5px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:10px;color:var(--text-muted);font-family:var(--font-mono)}
+
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:52px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;gap:16px;background:var(--bg-surface);flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:500;color:var(--text-primary)}
+.topbar-sep{width:1px;height:16px;background:var(--line-mid)}
+.topbar-sub{font-size:12px;color:var(--text-muted);font-family:var(--font-mono)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--r-md);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .12s;border:1px solid transparent;font-family:var(--font-sans);white-space:nowrap}
+.btn-ghost{background:transparent;color:var(--text-secondary);border-color:var(--line-mid)}
+.btn-ghost:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-accent{background:var(--accent);color:var(--bg-base)}
+.btn-accent:hover{background:#d8e4ff}
+.btn-ok{background:var(--ok-dim);color:var(--ok-text);border-color:rgba(95,184,130,.2)}
+.btn-ok:hover{background:rgba(95,184,130,.18)}
+.btn-danger{background:var(--danger-dim);color:var(--danger-text);border-color:rgba(224,90,90,.2)}
+.btn-danger:hover{background:rgba(224,90,90,.14)}
+
+.content{flex:1;overflow-y:auto;padding:26px 26px;scroll-behavior:smooth}
+.content::-webkit-scrollbar{width:5px}
+.content::-webkit-scrollbar-thumb{background:var(--line-mid);border-radius:3px}
+
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+.page-date{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.page-heading{font-size:22px;font-weight:600;color:var(--text-primary);letter-spacing:-.02em;line-height:1.2}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat-card{background:var(--bg-surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;position:relative;overflow:hidden;transition:border-color .15s}
+.stat-card:hover{border-color:var(--line-mid)}
+.stat-label{font-size:10.5px;font-weight:500;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;font-family:var(--font-mono);margin-bottom:8px}
+.stat-number{font-size:28px;font-weight:600;letter-spacing:-.04em;line-height:1;margin-bottom:4px}
+.stat-sub{font-size:11px;color:var(--text-muted)}
+.stat-bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--line)}
+.stat-bar-fill{height:100%;border-radius:0 99px 99px 0;transition:width .8s cubic-bezier(.16,1,.3,1)}
+.stat-ok .stat-number{color:var(--ok-text)}.stat-ok .stat-bar-fill{background:var(--ok)}
+.stat-warn .stat-number{color:var(--warn-text)}.stat-warn .stat-bar-fill{background:var(--warn)}
+.stat-danger .stat-number{color:var(--danger-text)}.stat-danger .stat-bar-fill{background:var(--danger)}
+.stat-neutral .stat-number{color:var(--text-secondary)}.stat-neutral .stat-bar-fill{background:var(--neutral)}
+.stat-blue .stat-number{color:var(--blue-text)}.stat-blue .stat-bar-fill{background:var(--blue)}
+
+.panel{background:var(--bg-surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.panel-header{display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--line);gap:10px}
+.panel-title{font-size:13px;font-weight:600;color:var(--text-primary);flex:1}
+.panel-meta{font-size:11px;font-family:var(--font-mono);color:var(--text-muted)}
+
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 16px;font-size:10.5px;font-weight:500;color:var(--text-muted);text-align:left;letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-mono);border-bottom:1px solid var(--line);background:var(--bg-surface);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--line);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg-hover)}
+td{padding:10px 16px;font-size:13px;color:var(--text-primary);vertical-align:middle}
+.td-name{display:flex;align-items:center;gap:10px}
+.td-avatar{width:28px;height:28px;border-radius:50%;background:var(--bg-active);border:1px solid var(--line-mid);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--text-secondary);flex-shrink:0}
+.td-fullname{font-size:13px;font-weight:500;color:var(--text-primary)}
+.td-dept{font-size:11px;color:var(--text-muted)}
+.td-time{font-family:var(--font-mono);font-size:12.5px;color:var(--text-secondary);letter-spacing:.02em}
+.td-time.dim{color:var(--text-dim)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:10.5px;font-weight:500;font-family:var(--font-mono);letter-spacing:.02em;border:1px solid transparent;white-space:nowrap}
+.chip-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.chip-ok{background:var(--ok-dim);color:var(--ok-text);border-color:rgba(95,184,130,.18)}.chip-ok .chip-dot{background:var(--ok)}
+.chip-warn{background:var(--warn-dim);color:var(--warn-text);border-color:rgba(232,164,74,.18)}.chip-warn .chip-dot{background:var(--warn)}
+.chip-danger{background:var(--danger-dim);color:var(--danger-text);border-color:rgba(224,90,90,.18)}.chip-danger .chip-dot{background:var(--danger)}
+.chip-neutral{background:var(--neutral-dim);color:var(--text-secondary);border-color:var(--line)}.chip-neutral .chip-dot{background:var(--neutral)}
+.chip-blue{background:var(--blue-dim);color:var(--blue-text);border-color:rgba(91,142,240,.18)}.chip-blue .chip-dot{background:var(--blue)}
+
+
+.loc-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:var(--r-sm);font-size:10.5px;font-family:var(--font-mono);font-weight:500;white-space:nowrap}
+.loc-campus{background:#0e1e1a;color:#5fb882;border:1px solid rgba(95,184,130,.2)}
+.loc-wfh{background:var(--blue-dim);color:var(--blue-text);border:1px solid rgba(91,142,240,.2)}
+.loc-none{background:var(--neutral-dim);color:var(--text-dim);border:1px solid var(--line)}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);padding:0 18px;overflow-x:auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 12px;font-size:12.5px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .1s;font-weight:500;white-space:nowrap;flex-shrink:0}
+.tab:hover{color:var(--text-primary)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.filter-row{display:flex;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 11px;flex:1;min-width:160px;max-width:240px;transition:border-color .12s}
+.search-box:focus-within{border-color:var(--line-mid)}
+.search-box input{background:none;border:none;outline:none;font-size:12.5px;color:var(--text-primary);font-family:var(--font-sans);width:100%}
+.search-box input::placeholder{color:var(--text-dim)}
+.select{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:6px 28px 6px 10px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-sans);outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23555a68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.select:focus{border-color:var(--line-mid);color:var(--text-primary)}
+.select option{background:#1d2026;color:var(--text-primary)}
+
+/* PRESENCE BOARD */
+.presence-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:10px;padding:16px}
+.presence-card{background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all .15s;border-left-width:2px}
+.presence-card:hover{border-color:var(--line-mid);background:var(--bg-hover)}
+.pc-ok{border-left-color:var(--ok)}.pc-warn{border-left-color:var(--warn)}.pc-danger{border-left-color:var(--danger)}.pc-blue{border-left-color:var(--blue)}.pc-neutral{border-left-color:var(--neutral)}
+.pc-top{display:flex;align-items:center;gap:8px}
+.pc-avatar{width:32px;height:32px;border-radius:50%;background:var(--bg-active);border:1px solid var(--line-mid);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text-secondary);flex-shrink:0}
+.pc-name{font-size:12.5px;font-weight:600;color:var(--text-primary);line-height:1.3}
+.pc-dept{font-size:10.5px;color:var(--text-muted)}
+.pc-time{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+.pc-time.has-time{color:var(--text-secondary)}
+
+/* CHECK-IN CARD */
+.checkin-card{background:var(--bg-surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px}
+.checkin-top{padding:20px;border-bottom:1px solid var(--line)}
+.live-dot{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--ok);position:relative}
+.pulse::after{content:'';position:absolute;inset:-3px;border-radius:50%;background:var(--ok);opacity:.3;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.8);opacity:0}}
+.time-display{font-size:40px;font-weight:600;letter-spacing:-.04em;color:var(--text-primary);line-height:1;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.time-date{font-size:12px;color:var(--text-muted);font-family:var(--font-mono)}
+
+.loc-mode-wrap{margin-top:16px}
+.loc-mode-label{font-size:10.5px;font-family:var(--font-mono);color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.loc-mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.loc-mode-btn{padding:9px 10px;border-radius:var(--r-md);border:1px solid var(--line-mid);background:transparent;color:var(--text-secondary);font-size:12px;font-weight:500;font-family:var(--font-sans);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.loc-mode-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.loc-mode-btn.sel-campus{background:var(--ok-dim);color:var(--ok-text);border-color:rgba(95,184,130,.25)}
+.loc-mode-btn.sel-wfh{background:var(--blue-dim);color:var(--blue-text);border-color:rgba(91,142,240,.25)}
+
+.gps-status{display:flex;align-items:flex-start;gap:8px;background:var(--ok-dim);border:1px solid rgba(95,184,130,.15);border-radius:var(--r-md);padding:9px 12px;margin-top:10px;transition:all .2s}
+.gps-icon{color:var(--ok);flex-shrink:0;margin-top:1px;transition:color .2s}
+.gps-label{font-size:12px;font-weight:500;color:var(--ok-text);transition:color .2s}
+.gps-coords{font-size:10px;font-family:var(--font-mono);color:var(--text-muted);margin-top:1px}
+.gps-status.wfh-mode{background:var(--blue-dim);border-color:rgba(91,142,240,.15)}
+.gps-status.wfh-mode .gps-icon{color:var(--blue)}
+.gps-status.wfh-mode .gps-label{color:var(--blue-text)}
+
+.checkin-actions{padding:14px 18px;display:flex;flex-direction:column;gap:8px}
+.btn-checkin{width:100%;padding:11px;border-radius:var(--r-md);border:none;background:var(--text-primary);color:var(--bg-base);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-sans);letter-spacing:.01em;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-checkin:hover{background:var(--accent);transform:translateY(-1px)}
+.btn-checkin:active{transform:translateY(0)}
+.btn-checkout{width:100%;padding:11px;border-radius:var(--r-md);border:1px solid var(--line-mid);background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-checkout:hover{background:var(--bg-hover);color:var(--text-primary)}
+
+.mini-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.mini-stat{padding:12px 14px;text-align:center;border-right:1px solid var(--line)}
+.mini-stat:last-child{border-right:none}
+.mini-stat-num{font-size:18px;font-weight:600;letter-spacing:-.03em}
+.mini-stat-label{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+
+.log-item{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);transition:background .1s}
+.log-item:last-child{border-bottom:none}
+.log-item:hover{background:var(--bg-hover)}
+.log-line{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;padding-top:4px}
+.log-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid currentColor;flex-shrink:0}
+.log-bar{width:1px;flex:1;background:var(--line);min-height:14px}
+.log-item:last-child .log-bar{display:none}
+.log-dot.ok{color:var(--ok)}.log-dot.warn{color:var(--warn)}.log-dot.danger{color:var(--danger)}.log-dot.neutral{color:var(--text-dim)}.log-dot.blue{color:var(--blue)}
+.log-body{flex:1;min-width:0}
+.log-msg{font-size:12.5px;color:var(--text-primary);line-height:1.4}
+.log-time{font-size:10.5px;font-family:var(--font-mono);color:var(--text-muted);margin-top:2px}
+
+.progress-wrap{margin-bottom:10px}
+.progress-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.progress-label{font-size:12px;color:var(--text-secondary)}
+.progress-val{font-size:11.5px;font-family:var(--font-mono);color:var(--text-muted)}
+.progress-track{height:4px;background:var(--line);border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;transition:width 1s cubic-bezier(.16,1,.3,1)}
+
+
+.grid-2{display:grid;grid-template-columns:1fr 360px;gap:14px;align-items:start}
+
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:var(--r-sm);font-size:10.5px;font-family:var(--font-mono);background:var(--bg-active);color:var(--text-muted);border:1px solid var(--line)}
+
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg-raised);border:1px solid var(--line-mid);border-radius:var(--r-md);padding:11px 16px;font-size:13px;color:var(--text-primary);z-index:200;display:flex;align-items:center;gap:10px;box-shadow:0 8px 32px rgba(0,0,0,.5);transform:translateY(12px);opacity:0;transition:all .22s;pointer-events:none;max-width:340px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.a1{animation:fadeUp .35s ease both}.a2{animation:fadeUp .35s ease .06s both}.a3{animation:fadeUp .35s ease .12s both}.a4{animation:fadeUp .35s ease .18s both}.a5{animation:fadeUp .35s ease .24s both}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><div class="toast-dot" id="toast-dot"></div><span id="toast-msg"></span></div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark"><span>TA</span></div>
+      <div><div class="brand-name">TOAS</div><div class="brand-sub">Attendance</div></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">ภาพรวม</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="switchView('dashboard',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" id="nav-presence" onclick="switchView('presence',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-5 6-5s6 1.7 6 5"/></svg>
+        สถานะครู
+      </div>
+      <div class="nav-item" id="nav-checkin" onclick="switchView('checkin',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 8l2 2 3-3"/></svg>
+        เช็คอิน
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">จัดการ</div>
+      <div class="nav-item" id="nav-report" onclick="switchView('report',this)">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2h12v12H2z"/><path d="M5 6h6M5 9h4"/></svg>
+        รายงาน
+      </div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="user-info">
+        <div class="avatar">ณฐ</div>
+        <div class="user-meta"><div class="user-name">ณัฐพล สมบูรณ์</div><div class="user-role">admin</div></div>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#555a68" stroke-width="1.5"><path d="M5 10l3-3-3-3"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <span class="topbar-sep"></span>
+      <span class="topbar-sub">วันพุธ 17 มีนาคม 2569</span>
+      <div class="topbar-right">
+        <button class="btn btn-ghost" onclick="exportEvt(event)">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M3.5 6l3 3 3-3M1 10v1.5A1.5 1.5 0 002.5 13h8a1.5 1.5 0 001.5-1.5V10"/></svg>
+          Export
+        </button>
+              </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="content" id="view-dashboard">
+      <div class="page-header a1">
+        <div>
+          <div class="page-date">วันพุธ · 17 มีนาคม 2569 · สัปดาห์ที่ 11</div>
+          <div class="page-heading">ภาพรวมการเข้างานวันนี้</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="tag">Live</span>
+          <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">อัปเดต 08:47</span>
+        </div>
+      </div>
+      <div class="stat-row a2">
+        <div class="stat-card stat-ok"><div class="stat-label">มา (วิทยาลัย)</div><div class="stat-number">36</div><div class="stat-sub">สแกนเข้าแล้ว</div><div class="stat-bar"><div class="stat-bar-fill" style="width:72%"></div></div></div>
+        <div class="stat-card stat-blue"><div class="stat-label">WFH</div><div class="stat-number">6</div><div class="stat-sub">ยืนยันแล้ว</div><div class="stat-bar"><div class="stat-bar-fill" style="width:12%"></div></div></div>
+        <div class="stat-card stat-warn"><div class="stat-label">สาย</div><div class="stat-number">3</div><div class="stat-sub">เกิน 08:30 น.</div><div class="stat-bar"><div class="stat-bar-fill" style="width:6%"></div></div></div>
+        <div class="stat-card stat-danger"><div class="stat-label">ยังไม่มา</div><div class="stat-number">3</div><div class="stat-sub">ณ เวลานี้</div><div class="stat-bar"><div class="stat-bar-fill" style="width:6%"></div></div></div>
+        </div>
+      </div>
+      <div class="panel a3" style="margin-bottom:14px;padding:16px 18px">
+        <div class="progress-wrap" style="margin-bottom:10px">
+          <div class="progress-header"><span class="progress-label">อัตราการเข้างานวันนี้ (วิทยาลัย + WFH)</span><span class="progress-val">96% · 48/50</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:96%;background:var(--ok)"></div></div>
+        </div>
+        <div class="progress-wrap" style="margin-bottom:0">
+          <div class="progress-header"><span class="progress-label">ยังไม่เช็คอิน</span><span class="progress-val">6 คน / 50</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:12%;background:var(--danger)"></div></div>
+        </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <div class="panel a4">
+            <div class="panel-header"><span class="panel-title">รายชื่อครูวันนี้</span><span class="panel-meta" id="table-count">50 รายการ</span></div>
+            <div class="tabs">
+              <div class="tab active" onclick="filterTable('all',this)">ทั้งหมด</div>
+              <div class="tab" onclick="filterTable('present',this)">วิทยาลัย</div>
+              <div class="tab" onclick="filterTable('wfh',this)">WFH</div>
+              <div class="tab" onclick="filterTable('late',this)">สาย</div>
+              <div class="tab" onclick="filterTable('absent',this)">ยังไม่มา</div>
+              </div>
+            <div class="filter-row">
+              <div class="search-box">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="var(--text-dim)" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><path d="M9 9l3 3"/></svg>
+                <input type="text" placeholder="ค้นหาชื่อหรือแผนก..." oninput="searchTable(this.value)">
+              </div>
+              <select class="select"><option>ทุกแผนก</option><option>วิทยาศาสตร์</option><option>คณิตศาสตร์</option><option>ภาษาไทย</option><option>สังคมศึกษา</option></select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ครู</th><th>สถานที่</th><th>เช็คอิน</th><th>เช็คเอาท์</th><th>สถานะ</th></tr></thead>
+                <tbody id="table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="checkin-card a4">
+            <div class="checkin-top">
+              <div class="live-dot"><div class="pulse"></div>Live · วันนี้</div>
+              <div class="time-display" id="clock">--:--:--</div>
+              <div class="time-date">พุธ 17 มีนาคม 2569</div>
+              <div class="loc-mode-wrap">
+                <div class="loc-mode-label">สถานที่ปฏิบัติงาน</div>
+                <div class="loc-mode-toggle">
+                  <button class="loc-mode-btn sel-campus" id="mb-campus" onclick="setLocMode('campus','mb-campus','mb-wfh','gps-a','gla','gsa')">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="2"/><path d="M4 13V7h5v6M1 5h11"/></svg>
+                    วิทยาลัย
+                  </button>
+                  <button class="loc-mode-btn" id="mb-wfh" onclick="setLocMode('wfh','mb-campus','mb-wfh','gps-a','gla','gsa')">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 6.5L6.5 1 12 6.5M2.5 5.5v6a1 1 0 001 1h6a1 1 0 001-1v-6"/></svg>
+                    WFH
+                  </button>
+                </div>
+              </div>
+              <div class="gps-status" id="gps-a">
+                <svg class="gps-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><circle cx="7" cy="7" r="2"/><path d="M7 1.5V3M7 11v1.5M1.5 7H3M11 7h1.5"/></svg>
+                <div><div class="gps-label" id="gla">อยู่ในพื้นที่วิทยาลัย</div><div class="gps-coords" id="gsa">13.7367° N, 100.5232° E · 42 ม.</div></div>
+              </div>
+            </div>
+            <div class="checkin-actions">
+              <button class="btn-checkin" id="ci-btn-a" onclick="doCheckin(event,'ci-btn-a')">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 7l3.5 3.5 5.5-6"/></svg>
+                บันทึกเช็คอิน
+              </button>
+              <button class="btn-checkout" onclick="doCheckout(event)">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v3l2 1.5"/></svg>
+                บันทึกเช็คเอาท์
+              </button>
+            </div>
+            <div class="mini-stats">
+              <div class="mini-stat"><div class="mini-stat-num" style="color:var(--ok-text)">36</div><div class="mini-stat-label">วิทยาลัย</div></div>
+              <div class="mini-stat"><div class="mini-stat-num" style="color:var(--blue-text)">6</div><div class="mini-stat-label">WFH</div></div>
+              <div class="mini-stat"><div class="mini-stat-num" style="color:var(--danger-text)">3</div><div class="mini-stat-label">ไม่มา</div></div>
+            </div>
+          </div>
+          <div class="panel a5">
+            <div class="panel-header"><span class="panel-title">กิจกรรมล่าสุด</span><span class="panel-meta">วันนี้</span></div>
+            <div id="activity-log"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRESENCE BOARD -->
+    <div class="content" id="view-presence" style="display:none">
+      <div class="page-header a1">
+        <div>
+          <div class="page-date">สถานะครูทั้งหมด · 17 มีนาคม 2569</div>
+          <div class="page-heading">กระดานสถานะปัจจุบัน</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select class="select" onchange="filterPresence(this.value)">
+            <option value="all">ทุกสถานะ</option>
+            <option value="campus">วิทยาลัย</option>
+            <option value="wfh">WFH</option>
+            <option value="late">สาย</option>
+            <option value="absent">ยังไม่มา</option>
+            </select>
+          <select class="select"><option>ทุกแผนก</option><option>คณิตศาสตร์</option><option>วิทยาศาสตร์</option></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" class="a2" id="presence-summary"></div>
+      <div class="panel a3">
+        <div class="presence-grid" id="presence-grid"></div>
+      </div>
+    </div>
+
+    <!-- CHECK-IN VIEW -->
+    <div class="content" id="view-checkin" style="display:none">
+      <div class="page-header a1">
+        <div><div class="page-date">เช็คอิน · 17 มีนาคม 2569</div><div class="page-heading">ยืนยันการเข้างาน</div></div>
+      </div>
+      <div style="max-width:440px;margin:0 auto">
+        <div class="checkin-card a2" style="margin-bottom:14px">
+          <div class="checkin-top">
+            <div class="live-dot"><div class="pulse"></div>ระบบออนไลน์</div>
+            <div class="time-display" id="clock2">--:--:--</div>
+            <div class="time-date">พุธ 17 มีนาคม 2569</div>
+            <div class="loc-mode-wrap">
+              <div class="loc-mode-label">ฉันปฏิบัติงานที่</div>
+              <div class="loc-mode-toggle">
+                <button class="loc-mode-btn sel-campus" id="mb-campus2" onclick="setLocMode('campus','mb-campus2','mb-wfh2','gps-b','glb','gsb')">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="2"/><path d="M4 13V7h5v6M1 5h11"/></svg>
+                  วิทยาลัย
+                </button>
+                <button class="loc-mode-btn" id="mb-wfh2" onclick="setLocMode('wfh','mb-campus2','mb-wfh2','gps-b','glb','gsb')">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 6.5L6.5 1 12 6.5M2.5 5.5v6a1 1 0 001 1h6a1 1 0 001-1v-6"/></svg>
+                  WFH
+                </button>
+              </div>
+            </div>
+            <div class="gps-status" id="gps-b">
+              <svg class="gps-icon" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><circle cx="7" cy="7" r="2"/><path d="M7 1.5V3M7 11v1.5M1.5 7H3M11 7h1.5"/></svg>
+              <div><div class="gps-label" id="glb">อยู่ในพื้นที่วิทยาลัย</div><div class="gps-coords" id="gsb">13.7367° N, 100.5232° E · 42 ม.</div></div>
+            </div>
+          </div>
+          <div style="padding:16px 18px;border-bottom:1px solid var(--line)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+              <div class="avatar" style="width:40px;height:40px;font-size:13px">สม</div>
+              <div><div style="font-size:14px;font-weight:600;color:var(--text-primary)">สมชาย มีสุข</div><div style="font-size:11.5px;color:var(--text-muted);font-family:var(--font-mono)">คณิตศาสตร์ · ม.4-6</div></div>
+            </div>
+            <div style="background:var(--bg-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:12px;text-align:center;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--line-mid)'" onmouseout="this.style.borderColor=''">
+              <div style="width:52px;height:52px;border-radius:50%;border:1.5px dashed var(--line-mid);display:flex;align-items:center;justify-content:center;margin:0 auto 7px">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M2 14l4-4 3 3 4-5 5 6H2z"/><circle cx="14" cy="6" r="1.5"/><rect x="1" y="1" width="18" height="18" rx="3"/></svg>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted)">ถ่ายรูปยืนยัน (ไม่บังคับ)</div>
+            </div>
+          </div>
+          <div class="checkin-actions">
+            <button class="btn-checkin" id="ci-btn-b" onclick="doCheckin(event,'ci-btn-b')">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 7l3.5 3.5 5.5-6"/></svg>
+              ยืนยันเช็คอิน
+            </button>
+            <button class="btn-checkout" onclick="doCheckout(event)">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v3l2 1.5"/></svg>
+              ยืนยันเช็คเอาท์
+            </button>
+            </div>
+        </div>
+        <div class="panel a3">
+          <div class="panel-header"><span class="panel-title">ประวัติ 7 วันล่าสุด</span></div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:8px 14px;font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);text-align:left;border-bottom:1px solid var(--line);letter-spacing:.07em;text-transform:uppercase">วันที่</th>
+              <th style="padding:8px 14px;font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);text-align:left;border-bottom:1px solid var(--line);letter-spacing:.07em;text-transform:uppercase">สถานที่</th>
+              <th style="padding:8px 14px;font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);text-align:left;border-bottom:1px solid var(--line);letter-spacing:.07em;text-transform:uppercase">เข้า</th>
+              <th style="padding:8px 14px;font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono);text-align:left;border-bottom:1px solid var(--line);letter-spacing:.07em;text-transform:uppercase"></th>
+            </tr></thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:9px 14px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-mono)">17 มี.ค.</td><td style="padding:9px 14px"><span class="loc-badge loc-none">—</span></td><td style="padding:9px 14px;font-size:12.5px;color:var(--text-dim);font-family:var(--font-mono)">—</td><td style="padding:9px 14px"><span class="chip chip-neutral"><span class="chip-dot"></span>ยังไม่เช็ค</span></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:9px 14px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-mono)">16 มี.ค.</td><td style="padding:9px 14px"><span class="loc-badge loc-campus">วิทยาลัย</span></td><td style="padding:9px 14px;font-size:12.5px;color:var(--text-primary);font-family:var(--font-mono)">08:19</td><td style="padding:9px 14px"><span class="chip chip-ok"><span class="chip-dot"></span>ปกติ</span></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:9px 14px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-mono)">15 มี.ค.</td><td style="padding:9px 14px"><span class="loc-badge loc-wfh">WFH</span></td><td style="padding:9px 14px;font-size:12.5px;color:var(--text-primary);font-family:var(--font-mono)">08:05</td><td style="padding:9px 14px"><span class="chip chip-ok"><span class="chip-dot"></span>ปกติ</span></td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="padding:9px 14px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-mono)">14 มี.ค.</td><td style="padding:9px 14px"><span class="loc-badge loc-campus">วิทยาลัย</span></td><td style="padding:9px 14px;font-size:12.5px;color:var(--text-primary);font-family:var(--font-mono)">08:44</td><td style="padding:9px 14px"><span class="chip chip-warn"><span class="chip-dot"></span>สาย</span></td></tr>
+              <tr><td style="padding:9px 14px;font-size:12.5px;color:var(--text-secondary);font-family:var(--font-mono)">13 มี.ค.</td><td style="padding:9px 14px"><span class="loc-badge loc-none">—</span></td><td style="padding:9px 14px;font-size:12.5px;color:var(--text-dim);font-family:var(--font-mono)">—</td><td style="padding:9px 14px"><span class="chip chip-neutral"><span class="chip-dot"></span>หยุด</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEAVE VIEW -->
+    <div class="content" id="view-report" style="display:none">
+      <div class="page-header a1">
+        <div><div class="page-date">รายงาน</div><div class="page-heading">สรุปการเข้างานรายเดือน</div></div>
+        <button class="btn btn-ghost" onclick="exportEvt(event)">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M3.5 6l3 3 3-3M1 10v1.5A1.5 1.5 0 002.5 13h8a1.5 1.5 0 001.5-1.5V10"/></svg>
+          Export Excel
+        </button>
+      </div>
+      <div class="panel a2">
+        <div class="filter-row" style="border-top:none">
+          <select class="select"><option>มีนาคม 2569</option><option>กุมภาพันธ์ 2569</option></select>
+          <select class="select"><option>ทุกแผนก</option><option>วิทยาศาสตร์</option></select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ครู</th><th>วันทำงาน</th><th>วิทยาลัย</th><th>WFH</th><th>สาย</th><th>ขาด</th><th>อัตรา</th></tr></thead>
+            <tbody>
+              <tr><td><div class="td-name"><div class="td-avatar">สม</div><div><div class="td-fullname">สมชาย มีสุข</div><div class="td-dept">คณิตศาสตร์</div></div></div></td><td class="td-time">22</td><td class="td-time" style="color:var(--ok-text)">18</td><td class="td-time" style="color:var(--blue-text)">2</td><td class="td-time" style="color:var(--warn-text)">1</td><td class="td-time" style="color:var(--danger-text)">0</td><td><span class="chip chip-ok"><span class="chip-dot"></span>95.4%</span></td></tr>
+              <tr><td><div class="td-name"><div class="td-avatar">วิ</div><div><div class="td-fullname">วิภา สุขใจ</div><div class="td-dept">วิทยาศาสตร์</div></div></div></td><td class="td-time">22</td><td class="td-time" style="color:var(--ok-text)">14</td><td class="td-time" style="color:var(--blue-text)">5</td><td class="td-time" style="color:var(--warn-text)">3</td><td class="td-time" style="color:var(--danger-text)">0</td><td><span class="chip chip-ok"><span class="chip-dot"></span>86.3%</span></td></tr>
+              <tr><td><div class="td-name"><div class="td-avatar">ปร</div><div><div class="td-fullname">ประยุทธ์ ดีงาม</div><div class="td-dept">สังคมศึกษา</div></div></div></td><td class="td-time">22</td><td class="td-time" style="color:var(--ok-text)">15</td><td class="td-time" style="color:var(--blue-text)">2</td><td class="td-time" style="color:var(--warn-text)">2</td><td class="td-time" style="color:var(--danger-text)">2</td><td><span class="chip chip-warn"><span class="chip-dot"></span>77.2%</span></td></tr>
+              <tr><td><div class="td-name"><div class="td-avatar">กา</div><div><div class="td-fullname">กาญจนา รักเรียน</div><div class="td-dept">ภาษาไทย</div></div></div></td><td class="td-time">22</td><td class="td-time" style="color:var(--ok-text)">22</td><td class="td-time" style="color:var(--blue-text)">0</td><td class="td-time" style="color:var(--warn-text)">0</td><td class="td-time" style="color:var(--danger-text)">0</td><td><span class="chip chip-ok"><span class="chip-dot"></span>100%</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const teachers=[
+  {init:'สม',name:'สมชาย มีสุข',   dept:'คณิตศาสตร์', in:'08:24',out:'—',   status:'present',loc:'campus'},
+  {init:'วิ',name:'วิภา สุขใจ',    dept:'วิทยาศาสตร์',in:'08:51',out:'—',   status:'late',   loc:'campus'},
+  {init:'กา',name:'กาญจนา รักเรียน',dept:'ภาษาไทย',   in:'07:58',out:'16:30',status:'present',loc:'campus'},
+  {init:'ปร',name:'ประยุทธ์ ดีงาม',dept:'สังคมศึกษา', in:'—',    out:'—',   status:'absent', loc:null},
+  {init:'นา',name:'นารี ใจดี',      dept:'ภาษาอังกฤษ',in:'08:10',out:'—',   status:'present',loc:'wfh'},
+  {init:'พิ',name:'พิชัย สว่าง',   dept:'พลศึกษา',   in:'08:00',out:'16:45',status:'present',loc:'campus'},
+  {init:'อา',name:'อารีย์ สดใส',   dept:'ศิลปะ',      in:'08:30',out:'—',   status:'present',loc:'wfh'},
+  {init:'ธน',name:'ธนพล มั่นคง',  dept:'วิทยาศาสตร์',in:'09:02',out:'—',   status:'late',   loc:'campus'},
+  {init:'มา',name:'มาลี งามเจริญ', dept:'คณิตศาสตร์', in:'—',    out:'—',   status:'absent', loc:null},
+  {init:'ชา',name:'ชาญชัย เก่งกล้า',dept:'ภาษาไทย',  in:'08:15',out:'—',   status:'present',loc:'campus'},
+  {init:'ยุ',name:'ยุวดี แสนงาม',  dept:'สังคมศึกษา', in:'08:22',out:'—',   status:'present',loc:'wfh'},
+  {init:'สุ',name:'สุชาติ เฉลิมพร',dept:'คณิตศาสตร์', in:'—',    out:'—',   status:'absent',  loc:null},
+  {init:'กม',name:'กมล ทองแดง',    dept:'วิทยาศาสตร์',in:'08:05',out:'—',   status:'present',loc:'campus'},
+  {init:'ธิ',name:'ธิดา แสงใส',    dept:'ภาษาอังกฤษ',in:'08:20',out:'—',   status:'present',loc:'wfh'},
+  {init:'วร',name:'วรรณา ดวงแก้ว', dept:'สังคมศึกษา', in:'—',    out:'—',   status:'absent', loc:null},
+];
+
+const logs=[
+  {type:'ok',   msg:'<strong>กมล ทองแดง</strong> เช็คอิน — วิทยาลัย',     time:'08:05 น.'},
+  {type:'blue', msg:'<strong>ธิดา แสงใส</strong> เช็คอิน — WFH',           time:'08:20 น.'},
+  {type:'ok',   msg:'<strong>กาญจนา รักเรียน</strong> เช็คอิน — วิทยาลัย',time:'07:58 น.'},
+  {type:'warn', msg:'<strong>ธนพล มั่นคง</strong> เช็คอินสาย 32 นาที',     time:'09:02 น.'},
+  {type:'ok',msg:'<strong>ยุวดี แสนงาม</strong> เช็คอิน — WFH',time:'08:22 น.'},
+  {type:'danger',msg:'<strong>ประยุทธ์ ดีงาม</strong> ยังไม่เช็คอิน',       time:'เกิน 08:30'},
+];
+
+let curFilter='all', curSearch='', presFilter='all';
+let locModeMap={a:'campus', b:'campus'};
+
+// CHIPS & BADGES
+function chipFor(s){
+  const m={present:'<span class="chip chip-ok"><span class="chip-dot"></span>ปกติ</span>',late:'<span class="chip chip-warn"><span class="chip-dot"></span>สาย</span>',absent:'<span class="chip chip-danger"><span class="chip-dot"></span>ยังไม่มา</span>',wfh:'<span class="chip chip-blue"><span class="chip-dot"></span>WFH</span>'};
+  return m[s]||'';
+}
+function locBadge(loc){
+  if(loc==='campus') return '<span class="loc-badge loc-campus">วิทยาลัย</span>';
+  if(loc==='wfh')    return '<span class="loc-badge loc-wfh">WFH</span>';
+  return '<span class="loc-badge loc-none">—</span>';
+}
+function effStatus(t){ return t.loc==='wfh'&&(t.status==='present'||t.status==='late')?'wfh':t.status; }
+
+// TABLE
+function renderTable(){
+  let d=teachers;
+  if(curFilter==='wfh') d=d.filter(t=>t.loc==='wfh');
+  else if(curFilter!=='all') d=d.filter(t=>t.status===curFilter&&t.loc!=='wfh');
+  if(curSearch) d=d.filter(t=>t.name.includes(curSearch)||t.dept.includes(curSearch));
+  document.getElementById('table-body').innerHTML=d.map(t=>`
+    <tr>
+      <td><div class="td-name"><div class="td-avatar">${t.init}</div><div><div class="td-fullname">${t.name}</div><div class="td-dept">${t.dept}</div></div></div></td>
+      <td>${locBadge(t.loc)}</td>
+      <td class="td-time${t.in==='—'?' dim':''}">${t.in}</td>
+      <td class="td-time dim">${t.out}</td>
+      <td>${t.loc==='wfh'?chipFor('wfh'):chipFor(t.status)}</td>
+    </tr>`).join('');
+  document.getElementById('table-count').textContent=d.length+' รายการ';
+}
+function filterTable(f,el){curFilter=f;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderTable();}
+function searchTable(v){curSearch=v;renderTable();}
+
+// PRESENCE BOARD
+function renderPresence(){
+  let d=teachers;
+  if(presFilter==='campus') d=d.filter(t=>t.loc==='campus'&&t.status!=='absent');
+  else if(presFilter==='wfh') d=d.filter(t=>t.loc==='wfh');
+  else if(presFilter==='late') d=d.filter(t=>t.status==='late');
+  else if(presFilter==='absent') d=d.filter(t=>t.status==='absent');
+  
+  const pcClass={present:'pc-ok',late:'pc-warn',absent:'pc-danger'};
+  document.getElementById('presence-grid').innerHTML=d.map(t=>{
+    const es=effStatus(t);
+    const cls=es==='wfh'?'pc-blue':(pcClass[t.status]||'pc-neutral');
+    return `<div class="presence-card ${cls}">
+      <div class="pc-top"><div class="pc-avatar">${t.init}</div><div><div class="pc-name">${t.name}</div><div class="pc-dept">${t.dept}</div></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">${es==='wfh'?chipFor('wfh'):chipFor(t.status)}${locBadge(t.loc)}</div>
+      <div class="pc-time${t.in!=='—'?' has-time':''}">${t.in!=='—'?'เช็คอิน '+t.in:'ยังไม่เช็คอิน'}</div>
+    </div>`;
+  }).join('');
+
+  // summary strip
+  const counts={campus:0,wfh:0,late:0,absent:0};
+  teachers.forEach(t=>{
+    const es=effStatus(t);
+    if(es==='wfh') counts.wfh++;
+        else if(t.status==='absent') counts.absent++;
+    else if(t.status==='late') counts.late++;
+    else if(t.status==='present') counts.campus++;
+  });
+  const pills=[
+    {label:'วิทยาลัย',n:counts.campus,color:'var(--ok)'},
+    {label:'WFH',n:counts.wfh,color:'var(--blue)'},
+    {label:'สาย',n:counts.late,color:'var(--warn)'},
+    {label:'ยังไม่มา',n:counts.absent,color:'var(--danger)'},
+      ];
+  document.getElementById('presence-summary').innerHTML=pills.map(p=>`
+    <div style="background:var(--bg-surface);border:1px solid var(--line);border-radius:var(--r-md);padding:7px 14px;display:flex;align-items:center;gap:8px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${p.color};flex-shrink:0"></div>
+      <span style="font-size:12px;color:var(--text-secondary)">${p.label}</span>
+      <span style="font-family:var(--font-mono);font-size:12px;font-weight:600;color:${p.color}">${p.n}</span>
+    </div>`).join('');
+}
+function filterPresence(v){presFilter=v;renderPresence();}
+
+// LOCATION MODE
+function setLocMode(mode,cId,wId,gId,lId,sId){
+  const cb=document.getElementById(cId), wb=document.getElementById(wId);
+  const gb=document.getElementById(gId), gl=document.getElementById(lId), gs=document.getElementById(sId);
+  if(!cb||!wb) return;
+  if(mode==='campus'){
+    cb.className='loc-mode-btn sel-campus'; wb.className='loc-mode-btn';
+    if(gb){gb.className='gps-status'; gl.textContent='อยู่ในพื้นที่วิทยาลัย'; gs.textContent='13.7367° N, 100.5232° E · 42 ม.';}
+  } else {
+    wb.className='loc-mode-btn sel-wfh'; cb.className='loc-mode-btn';
+    if(gb){gb.className='gps-status wfh-mode'; gl.textContent='ทำงานจากที่บ้าน (WFH)'; gs.textContent='ยืนยันตำแหน่งอัตโนมัติ';}
+  }
+  const key=cId.includes('2')?'b':'a';
+  locModeMap[key]=mode;
+}
+
+// CHECK-IN
+function doCheckin(e,btnId){
+  const btn=document.getElementById(btnId); if(!btn) return;
+  const key=btnId.includes('b')?'b':'a';
+  const mode=locModeMap[key]||'campus';
+  const locLabel=mode==='campus'?'วิทยาลัย':'WFH';
+  const orig=btn.innerHTML;
+  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 7l3.5 3.5 5.5-6"/></svg> เช็คอินสำเร็จ — ${locLabel}`;
+  btn.style.background=mode==='campus'?'var(--ok-text)':'var(--blue-text)';
+  btn.style.color='var(--bg-base)';
+  showToast('เช็คอินสำเร็จ · '+locLabel+' · '+new Date().toTimeString().slice(0,5)+' น.', mode==='campus'?'ok':'blue');
+  setTimeout(()=>{btn.innerHTML=orig; btn.style.background=''; btn.style.color='';},3000);
+}
+function doCheckout(e){
+  const btn=e.target.closest('button'); const orig=btn.innerHTML;
+  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><path d="M7 4.5v3l2 1.5"/></svg> เช็คเอาท์แล้ว`;
+  btn.style.color='var(--ok-text)'; btn.style.borderColor='rgba(95,184,130,.3)';
+  showToast('เช็คเอาท์สำเร็จ · '+new Date().toTimeString().slice(0,5)+' น.','ok');
+  setTimeout(()=>{btn.innerHTML=orig; btn.style.color=''; btn.style.borderColor='';},3000);
+}
+
+// TOAST
+let toastTimer;
+function showToast(msg,type){
+  const t=document.getElementById('toast'), d=document.getElementById('toast-dot'), m=document.getElementById('toast-msg');
+  const colors={ok:'var(--ok)',warn:'var(--warn)',danger:'var(--danger)',blue:'var(--blue)',neutral:'var(--neutral)'};
+  d.style.background=colors[type]||'var(--ok)'; m.textContent=msg;
+  t.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+// CLOCK
+function tick(){
+  const n=new Date(), s=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+  ['clock','clock2'].forEach(id=>{const el=document.getElementById(id); if(el) el.textContent=s;});
+}
+setInterval(tick,1000); tick();
+
+// LOG
+function renderLog(){
+  document.getElementById('activity-log').innerHTML=logs.map(l=>`
+    <div class="log-item">
+      <div class="log-line"><div class="log-dot ${l.type}"></div><div class="log-bar"></div></div>
+      <div class="log-body"><div class="log-msg">${l.msg}</div><div class="log-time">${l.time}</div></div>
+    </div>`).join('');
+}
+
+// NAV
+const allViews=['dashboard','presence','checkin','report'];
+const titleMap={dashboard:'Dashboard',presence:'สถานะครู',checkin:'เช็คอิน',report:'รายงาน'};
+function switchView(v,navEl){
+  allViews.forEach(id=>{const el=document.getElementById('view-'+id); if(el) el.style.display=id===v?'':'none';});
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(navEl) navEl.classList.add('active');
+  document.getElementById('topbar-title').textContent=titleMap[v]||v;
+  if(v==='presence'){renderPresence();}
+  }
+function exportEvt(e){
+  const btn=e.target.closest('button'), orig=btn.innerHTML;
+  btn.innerHTML='กำลัง Export...'; btn.style.color='var(--ok-text)';
+  showToast('Export สำเร็จ — attendance_march_2026.xlsx','ok');
+  setTimeout(()=>{btn.innerHTML=orig; btn.style.color='';},1800);
+}
+
+// INIT
+renderTable(); renderLog();
+</script>
+</body>
+</html>
