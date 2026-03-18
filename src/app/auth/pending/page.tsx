@@ -277,7 +277,7 @@ export default function PendingPage() {
 
                   {/* ชื่อ-นามสกุล */}
                   <div ref={dropRef} style={{ position: 'relative' }}>
-                    <label style={labelBase}>ชื่อ-นามสกุล <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <label style={labelBase}>โปรดพิมพ์ชื่อจริง-นามสกุล<span style={{ color: 'var(--danger)' }}>*</span></label>
                     <input
                       style={inputBase}
                       value={nameSearch}
