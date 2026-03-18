@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "supabase db push",
-    "db:types": "supabase gen types typescript --local > src/types/database.ts"
+    "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "seed:whitelist": "node --env-file=.env.local scripts/seed-whitelist.mjs"
   },
   "dependencies": {
     "next": "14.2.35",

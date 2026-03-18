@@ -147,6 +147,29 @@ export async function listActiveTeachersForExport(dept?: string | null) {
   return data ?? []
 }
 
+// ─── Staff whitelist queries ───────────────────────────────────────────────────
+
+/** ตรวจสอบว่า national_id + full_name_th ตรงคู่กันใน whitelist */
+export async function checkWhitelist(nationalId: string, fullName: string): Promise<boolean> {
+  const { data } = await client()
+    .from('staff_whitelist')
+    .select('national_id')
+    .eq('national_id', nationalId)
+    .eq('full_name_th', fullName)
+    .maybeSingle()
+  return data !== null
+}
+
+/** ค้นหาชื่อใน whitelist ที่มี q เป็นส่วนหนึ่ง (ส่งคืนแค่ชื่อ ไม่มีเลขบัตร) */
+export async function searchWhitelistNames(q: string): Promise<string[]> {
+  const { data } = await client()
+    .from('staff_whitelist')
+    .select('full_name_th')
+    .ilike('full_name_th', `%${q}%`)
+    .limit(10)
+  return (data ?? []).map((r: { full_name_th: string }) => r.full_name_th)
+}
+
 // ─── Attendance queries ───────────────────────────────────────────────────────
 
 export async function getTodayRecord(userId: string, date: string) {
