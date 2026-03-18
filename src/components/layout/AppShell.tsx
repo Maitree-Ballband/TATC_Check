@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { clsx } from 'clsx'
 
 const NAV_TEACHER = [
@@ -31,9 +31,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isAdmin  = role === 'admin'
   const navItems = role === 'admin' ? NAV_ADMIN : role === 'executive' ? NAV_EXECUTIVE : NAV_TEACHER
 
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   useEffect(() => {
     if (session?.user?.isPending) router.replace('/auth/pending')
   }, [session, router])
+
+  // Close sidebar on route change
+  useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   // Idle timeout — auto signOut after 15 minutes of inactivity
   useEffect(() => {
@@ -60,8 +65,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
 
+      {/* ── Mobile backdrop overlay ── */}
+      <div
+        className={clsx('appshell-overlay', sidebarOpen && 'sidebar-open')}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* ── Sidebar ── */}
-      <aside style={{
+      <aside className={clsx('appshell-sidebar', sidebarOpen && 'sidebar-open')} style={{
         width: 224, flexShrink: 0,
         background: 'var(--bg-surface)',
         borderRight: '1px solid var(--line)',
@@ -86,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {navItems.map(item => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
-              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+              <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }} onClick={() => setSidebarOpen(false)}>
                 <div className={clsx('nav-item', active && 'active')} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 18px', fontSize: 15,
@@ -105,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
 
-        {/* User */}
+        {/* User card */}
         <div style={{ borderTop: '1px solid var(--line)', padding: '14px 18px' }}>
           <div
             style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 8, padding: '7px 8px', margin: '-7px -8px' }}
@@ -124,28 +135,47 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ── Main ── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Topbar */}
-        <div style={{ height: 56, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 14, background: 'var(--bg-surface)', flexShrink: 0 }}>
+        <div style={{
+          height: 56, borderBottom: '1px solid var(--line)',
+          display: 'flex', alignItems: 'center', padding: '0 16px',
+          gap: 10, background: 'var(--bg-surface)', flexShrink: 0,
+        }}>
+          {/* Hamburger — visible only on mobile via CSS */}
+          <button
+            className="appshell-hamburger"
+            onClick={() => setSidebarOpen(v => !v)}
+            aria-label="เปิดเมนู"
+            style={{
+              width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+              background: 'transparent', border: '1px solid var(--line-mid)',
+              cursor: 'pointer', color: 'var(--text-secondary)',
+            }}
+          >
+            <HamburgerIcon size={16} />
+          </button>
+
           <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
             {navItems.find(n => pathname.startsWith(n.href))?.label ?? 'TATC Check'}
           </span>
-          <span style={{ width: 1, height: 18, background: 'var(--line-mid)' }} />
-          <span style={{ fontSize: 13.5, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+          <span className="appshell-topbar-sep" style={{ width: 1, height: 18, background: 'var(--line-mid)' }} />
+          <span className="appshell-topbar-date" style={{ fontSize: 13.5, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
             {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </span>
+
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-              style={{ ...ghostBtn, color: 'var(--danger-text)', borderColor: 'rgba(220,38,38,.25)', gap: 6 }}
+              style={logoutBtn}
               title="ออกจากระบบ"
             >
-              <LogoutIcon size={13} />
-              ออกจากระบบ
+              <LogoutIcon size={14} />
+              <span className="appshell-logout-text">ออกจากระบบ</span>
             </button>
           </div>
         </div>
 
         {/* Page content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '26px 26px' }}>
+        <div className="appshell-content" style={{ flex: 1, overflowY: 'auto', padding: '26px 26px' }}>
           {children}
         </div>
       </main>
@@ -153,16 +183,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── Inline button style ──
-const ghostBtn: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 7,
-  padding: '7px 14px', borderRadius: 8, fontSize: 13.5, fontWeight: 500,
-  cursor: 'pointer', background: 'transparent',
-  color: 'var(--text-secondary)', border: '1px solid var(--line-mid)',
-  fontFamily: 'var(--font-body)',
+// ── Button styles ──────────────────────────────────────────────
+const logoutBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  padding: '7px 14px', borderRadius: 8, fontSize: 13.5, fontWeight: 600,
+  cursor: 'pointer', background: 'var(--danger)', color: '#fff',
+  border: '1px solid var(--danger)', fontFamily: 'var(--font-body)',
+  boxShadow: '0 1px 4px rgba(220,38,38,.25)',
 }
 
-// ── Icon components ──
+// ── Icon components ────────────────────────────────────────────
+function HamburgerIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M2 4h12M2 8h12M2 12h12"/>
+    </svg>
+  )
+}
 function GridIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={style}>
@@ -192,7 +229,6 @@ function ReportIcon({ size = 16, style }: { size?: number; style?: React.CSSProp
     </svg>
   )
 }
-
 function UserMgmtIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={style}>
@@ -201,7 +237,6 @@ function UserMgmtIcon({ size = 16, style }: { size?: number; style?: React.CSSPr
     </svg>
   )
 }
-
 function LogoutIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={style}>

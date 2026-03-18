@@ -140,3 +140,53 @@ input:focus, select:focus, textarea:focus {
   .signin-brand     { display: none; }
   .signin-form-side { padding: 40px 28px; }
 }
+
+/* ── AppShell responsive ─────────────────────────────────────── */
+.appshell-hamburger { display: none; }
+.appshell-overlay   { display: none; }
+
+@media (max-width: 680px) {
+  /* Sidebar becomes a slide-in drawer */
+  .appshell-sidebar {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; bottom: 0 !important;
+    z-index: 200 !important;
+    transform: translateX(-100%) !important;
+    transition: transform .22s ease !important;
+    box-shadow: 4px 0 28px rgba(30,36,51,.18) !important;
+  }
+  .appshell-sidebar.sidebar-open {
+    transform: translateX(0) !important;
+  }
+
+  /* Backdrop overlay */
+  .appshell-overlay {
+    display: block;
+    position: fixed; inset: 0; z-index: 199;
+    background: rgba(30,36,51,.42);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .appshell-overlay.sidebar-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Hamburger button */
+  .appshell-hamburger {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Hide date in topbar */
+  .appshell-topbar-date { display: none !important; }
+  .appshell-topbar-sep  { display: none !important; }
+
+  /* Tighter page content padding */
+  .appshell-content { padding: 14px !important; }
+
+  /* Logout: icon only on very small screens */
+  .appshell-logout-text { display: none; }
+}
