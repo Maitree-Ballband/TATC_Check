@@ -160,7 +160,7 @@ export default function PendingPage() {
         <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>TATC Check</span>
         <button
           onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-          style={{ background: 'transparent', border: '1px solid var(--line)', borderRadius: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', padding: '5px 14px', fontFamily: "'Sarabun', sans-serif" }}
+          style={{ background: 'var(--danger)', border: '1px solid var(--danger)', borderRadius: 6, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', padding: '5px 14px', fontFamily: "'Sarabun', sans-serif", boxShadow: '0 1px 4px rgba(220,38,38,.25)' }}
         >
           ออกจากระบบ
         </button>
