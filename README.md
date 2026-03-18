@@ -1,4 +1,4 @@
-# TOAS — Teacher Online Attendance System
+# TATC — Teacher Online Attendance System
 
 ระบบเช็คการเข้า-ออกครูออนไลน์ · MVP Build
 
