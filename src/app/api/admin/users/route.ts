@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   try {
-    const user = await db.createUser(parsed.data)
+    const payload = {
+      ...parsed.data,
+      ...(parsed.data.national_id === '' ? { national_id: null } : {}),
+    }
+    const user = await db.createUser(payload)
     return NextResponse.json({ user }, { status: 201 })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'db_error'

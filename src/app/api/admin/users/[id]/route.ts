@@ -24,7 +24,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   try {
-    const user = await db.updateUser(params.id, parsed.data)
+    const payload = {
+      ...parsed.data,
+      ...(parsed.data.national_id === '' ? { national_id: null } : {}),
+    }
+    const user = await db.updateUser(params.id, payload)
     return NextResponse.json({ user })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'db_error'
