@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { checkInSchema, isWithinGeofence, resolveStatus, todayDate } from '@/lib/attendance'
+import { checkInSchema, isWithinGeofence, isPastAbsentCutoff, resolveStatus, todayDate } from '@/lib/attendance'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
   const existing = await db.getTodayRecord(session.user.id, date)
   if (existing?.check_in_at) {
     return NextResponse.json({ error: 'already_checked_in', record: existing }, { status: 409 })
+  }
+
+  // Past noon without a check-in → absent, block further check-in
+  if (isPastAbsentCutoff()) {
+    return NextResponse.json({ error: 'absent' }, { status: 403 })
   }
 
   const now    = new Date()

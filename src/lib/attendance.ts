@@ -4,8 +4,9 @@ import type { AttendanceStatus } from '@/types'
 // ── School timezone ────────────────────────────────────────────
 // All date/time logic must operate in school local time, NOT server UTC.
 
-const SCHOOL_TZ = process.env.NEXT_PUBLIC_SCHOOL_TZ ?? 'Asia/Bangkok'
-const CUTOFF    = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'   // HH:mm
+const SCHOOL_TZ    = process.env.NEXT_PUBLIC_SCHOOL_TZ ?? 'Asia/Bangkok'
+const CUTOFF       = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'   // HH:mm
+const ABSENT_CUTOFF = process.env.NEXT_PUBLIC_ABSENT_CUTOFF ?? '12:00'   // HH:mm — after this, no check-in = absent
 
 // ── Geofence ───────────────────────────────────────────────────
 
@@ -59,6 +60,16 @@ export function resolveStatus(checkInAt: Date): AttendanceStatus {
   const [cutH, cutM] = CUTOFF.split(':').map(Number)
   const { h, m } = schoolHM(checkInAt)
   return h * 60 + m <= cutH * 60 + cutM ? 'present' : 'late'
+}
+
+/**
+ * Returns true when the current school-local time is past the absent cutoff (default 12:00).
+ * Teachers who have not checked in after this time are considered absent.
+ */
+export function isPastAbsentCutoff(): boolean {
+  const [cutH, cutM] = ABSENT_CUTOFF.split(':').map(Number)
+  const { h, m } = schoolHM(new Date())
+  return h * 60 + m > cutH * 60 + cutM
 }
 
 /**

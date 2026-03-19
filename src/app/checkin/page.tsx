@@ -7,6 +7,7 @@ import type { TodayStatus, AttendanceRecord } from '@/types'
 
 const CUTOFF         = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF           ?? '08:00'
 const CHECKOUT_AFTER = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'
+const ABSENT_CUTOFF  = process.env.NEXT_PUBLIC_ABSENT_CUTOFF            ?? '12:00'
 const SCHOOL_LAT     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT    ?? '13.736717')
 const SCHOOL_LNG     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG    ?? '100.523186')
 const RADIUS_M       = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '500')
@@ -23,6 +24,12 @@ function isAfterCheckoutTime() {
   const [h, m] = CHECKOUT_AFTER.split(':').map(Number)
   const now = new Date()
   return now.getHours() * 60 + now.getMinutes() >= h * 60 + m
+}
+
+function isPastAbsentCutoff() {
+  const [h, m] = ABSENT_CUTOFF.split(':').map(Number)
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes() > h * 60 + m
 }
 
 export default function CheckinPage() {
@@ -83,6 +90,7 @@ export default function CheckinPage() {
 
   const handleCheckin = async () => {
     if (today?.checked_in) return
+    if (isAbsent) { showToast(`พ้นเวลา ${ABSENT_CUTOFF} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
     if (gpsState === 'loading') { showToast('กำลังตรวจสอบตำแหน่ง กรุณารอสักครู่', 'warn'); return }
     if (gpsState === 'error')   { showToast('ไม่พบ GPS กรุณาอนุญาตการเข้าถึงตำแหน่ง', 'danger'); return }
     setLoading(true)
@@ -116,10 +124,13 @@ export default function CheckinPage() {
     }
   }
 
+  const isAbsent = !today?.checked_in && isPastAbsentCutoff()
+
   const statusChip = () => {
-    if (!today?.checked_in)  return <Chip variant="neutral" label="ยังไม่ลงชื่อ" />
-    if (today.record?.location_mode === 'wfh') return <Chip variant="blue" label="WFH" />
-    if (today.record?.status === 'late')       return <Chip variant="warn"  label="สาย" />
+    if (isAbsent)                              return <Chip variant="danger"  label="ขาด" />
+    if (!today?.checked_in)                    return <Chip variant="neutral" label="ยังไม่ลงชื่อ" />
+    if (today.record?.location_mode === 'wfh') return <Chip variant="blue"   label="WFH" />
+    if (today.record?.status === 'late')       return <Chip variant="warn"   label="สาย" />
     return <Chip variant="ok" label="ลงชื่อแล้ว" />
   }
 
@@ -220,19 +231,23 @@ export default function CheckinPage() {
               {/* ลงชื่อเข้า */}
               <button
                 onClick={handleCheckin}
-                disabled={loading || !!today?.checked_in || gpsState !== 'ok'}
+                disabled={loading || !!today?.checked_in || isAbsent || gpsState !== 'ok'}
                 style={{
                   flex: 1, padding: '22px 8px', borderRadius: 12, border: 'none',
                   fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
                   fontFamily: 'var(--font-heading)',
-                  cursor: (today?.checked_in || gpsState !== 'ok') ? 'not-allowed' : 'pointer',
+                  cursor: (today?.checked_in || isAbsent || gpsState !== 'ok') ? 'not-allowed' : 'pointer',
                   background: today?.checked_in
                     ? 'var(--bg-active)'
+                    : isAbsent
+                    ? 'var(--danger-dim)'
                     : gpsState !== 'ok'
                     ? 'var(--bg-raised)'
                     : 'var(--text-primary)',
                   color: today?.checked_in
                     ? 'var(--text-muted)'
+                    : isAbsent
+                    ? 'var(--danger-text)'
                     : gpsState !== 'ok'
                     ? 'var(--text-dim)'
                     : 'var(--bg-base)',
@@ -241,10 +256,12 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>ลงชื่อเข้า</span>
+                <span>{isAbsent ? 'ขาด' : 'ลงชื่อเข้า'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.75 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
+                    : isAbsent
+                    ? `พ้นเวลา ${ABSENT_CUTOFF} น.`
                     : gpsState === 'loading' ? 'กำลังตรวจสอบ...'
                     : gpsState === 'error'   ? 'ไม่พบ GPS'
                     : isCampus ? 'วิทยาลัย' : 'WFH'}
@@ -287,7 +304,7 @@ export default function CheckinPage() {
             </div>
 
             <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
-              ลงชื่อหลัง {CUTOFF} น. = สาย · ลงชื่อออกได้หลัง {CHECKOUT_AFTER} น.
+              ลงชื่อหลัง {CUTOFF} น. = สาย · ไม่ลงชื่อก่อน {ABSENT_CUTOFF} น. = ขาด · ลงชื่อออกได้หลัง {CHECKOUT_AFTER} น.
             </div>
           </div>
         </div>
