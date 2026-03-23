@@ -46,46 +46,55 @@ export async function GET(req: NextRequest) {
 
   const users = await db.listActiveTeachersForExport()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userMap = new Map<string, string>(
+  const userMap = new Map<string, { national_id: string; name: string }>(
     users
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((u: any) => u.national_id)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((u: any) => [u.id, u.national_id as string]),
+      .map((u: any) => [u.id, { national_id: u.national_id as string, name: u.full_name_th as string }]),
   )
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const records = await db.getAttendanceForReport(users.map((u: any) => u.id), from, to)
 
   const sep = fmt === 'csv' ? ',' : ' '
   const lines: string[] = []
 
   for (const rec of records) {
-    const national_id = userMap.get(rec.user_id)
-    if (!national_id) continue
+    const info = userMap.get(rec.user_id)
+    if (!info) continue
 
+    const { national_id, name } = info
     const dateStr = toDDMMYYYY(rec.date)
 
-    // ── Check-in ───────────────────────────────────────────────
+    // ── Check-in filter active ─────────────────────────────
     if (filterIn && rec.check_in_at) {
       const hhmmss = extractHHMMSS(rec.check_in_at)
       const hhmm   = hhmmss.slice(0, 5)
       if (hhmm >= timeInFrom && hhmm <= timeInTo) {
-        lines.push([national_id, dateStr, hhmmss].join(sep))
+        lines.push([national_id, dateStr, hhmmss, name].join(sep))
       }
     }
 
-    // ── Check-out ──────────────────────────────────────────────
+    // ── Check-out filter active ────────────────────────────
     if (filterOut && rec.check_out_at) {
       const hhmmss = extractHHMMSS(rec.check_out_at)
       const hhmm   = hhmmss.slice(0, 5)
       if (hhmm >= timeOutFrom && hhmm <= timeOutTo) {
-        lines.push([national_id, dateStr, hhmmss].join(sep))
+        lines.push([national_id, dateStr, hhmmss, name].join(sep))
       }
     }
 
-    // ── No filter → export all check-in records ────────────────
-    if (!filterIn && !filterOut && rec.check_in_at) {
-      const hhmmss = extractHHMMSS(rec.check_in_at)
-      lines.push([national_id, dateStr, hhmmss].join(sep))
+    // ── No filter → export both check-in AND check-out ────
+    if (!filterIn && !filterOut) {
+      if (rec.check_in_at) {
+        const hhmmss = extractHHMMSS(rec.check_in_at)
+        lines.push([national_id, dateStr, hhmmss, name].join(sep))
+      }
+      if (rec.check_out_at) {
+        const hhmmss = extractHHMMSS(rec.check_out_at)
+        lines.push([national_id, dateStr, hhmmss, name].join(sep))
+      }
     }
   }
 

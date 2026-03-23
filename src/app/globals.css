@@ -191,6 +191,35 @@ input:focus, select:focus, textarea:focus {
   .appshell-logout-text { display: none; }
 }
 
+/* ── Presence page ───────────────────────────────────────────── */
+.presence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .presence-grid {
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .presence-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .presence-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .presence-stats-grid > div:nth-child(2) {
+    border-right: none !important;
+  }
+  .presence-header { flex-direction: column !important; }
+  .presence-header-actions { width: 100%; justify-content: flex-start !important; }
+  .presence-filter-bar { gap: 5px !important; }
+}
+
 /* ── Checkin page responsive ─────────────────────────────────── */
 .checkin-wrap { max-width: 440px; margin: 0 auto; }
 

@@ -262,7 +262,7 @@ export default async function DashboardPage() {
                     {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
                       {row.effectiveStatus === 'wfh'         && <Chip variant="blue"    label="WFH"       />}
-                      {row.effectiveStatus === 'present'     && <Chip variant="ok"      label="ปกติ"      />}
+                      {row.effectiveStatus === 'present'     && <Chip variant="ok"      label="วิทยาลัย"  />}
                       {row.effectiveStatus === 'late'        && <Chip variant="warn"    label="สาย"       />}
                       {row.effectiveStatus === 'wfh_late'    && <Chip variant="warn"    label="WFH · สาย" />}
                       {row.effectiveStatus === 'absent'      && <Chip variant="danger"  label="ขาด"       />}

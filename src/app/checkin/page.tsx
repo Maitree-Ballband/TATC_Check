@@ -356,15 +356,6 @@ export default function CheckinPage() {
                     </div>
                   )}
 
-                  {/* GPS ok + campus: allow manual switch to WFH */}
-                  {gpsState === 'ok' && locMode === 'campus' && (
-                    <button
-                      onClick={() => setLocMode('wfh')}
-                      style={{ marginTop: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(95,184,130,.4)', background: 'transparent', color: 'var(--ok-text)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                    >
-                      เปลี่ยนเป็น WFH วันนี้
-                    </button>
-                  )}
 
                   {/* GPS ok + wfh (out of range): show current mode */}
                   {gpsState === 'ok' && locMode === 'wfh' && (
