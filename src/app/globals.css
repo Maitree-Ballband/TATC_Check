@@ -221,9 +221,33 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
 }
 
+/* Presence table — horizontal scroll on mobile */
+.presence-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 900px) {
   .presence-grid {
     grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  }
+}
+
+/* Medium mobile: pills → 3 columns */
+@media (max-width: 720px) {
+  .presence-stats-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  .presence-stats-grid > div:nth-child(3n) {
+    border-right: none !important;
+  }
+  /* Table rows get min-width so they scroll instead of squishing */
+  .presence-table-row {
+    min-width: 580px;
+  }
+  /* Export controls wrap nicely */
+  .presence-export-wrap {
+    flex-wrap: wrap;
   }
 }
 
@@ -232,15 +256,22 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: repeat(2, 1fr);
     gap: 6px;
   }
-  .presence-stats-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .presence-stats-grid > div:nth-child(2) {
-    border-right: none !important;
-  }
   .presence-header { flex-direction: column !important; }
   .presence-header-actions { width: 100%; justify-content: flex-start !important; }
   .presence-filter-bar { gap: 5px !important; }
+}
+
+/* Small mobile: pills → 2 columns */
+@media (max-width: 480px) {
+  .presence-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .presence-stats-grid > div:nth-child(3n) {
+    border-right: 1px solid var(--line) !important;
+  }
+  .presence-stats-grid > div:nth-child(2n) {
+    border-right: none !important;
+  }
 }
 
 /* ── Checkin page responsive ─────────────────────────────────── */

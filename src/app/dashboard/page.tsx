@@ -31,17 +31,18 @@ export default async function DashboardPage() {
 
   const stats = rows.reduce(
     (a, r) => {
-      if      (r.effectiveStatus === 'wfh')                                     a.wfh++
-      else if (r.effectiveStatus === 'present')                                  a.campus++
-      else if (r.effectiveStatus === 'late' || r.effectiveStatus === 'wfh_late') a.late++
-      else if (r.effectiveStatus === 'absent')                                   a.absent++
-      else                                                                       a.not_checked++
+      const es = r.effectiveStatus
+      if      (es === 'present' || es === 'late')       a.campus++
+      else if (es === 'wfh'    || es === 'wfh_late')    a.wfh++
+      else if (es === 'absent')                          a.absent++
+      else                                               a.not_checked++
+      if (es === 'late' || es === 'wfh_late')            a.late++
       return a
     },
     { campus: 0, wfh: 0, late: 0, absent: 0, not_checked: 0 }
   )
   const total      = rows.length
-  const presentAll = stats.campus + stats.wfh + stats.late
+  const presentAll = stats.campus + stats.wfh   // late is a subset of campus/wfh
   const attendRate = total ? Math.round(presentAll / total * 100) : 0
 
   const recentLogs = records

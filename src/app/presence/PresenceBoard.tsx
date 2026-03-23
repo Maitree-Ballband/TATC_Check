@@ -39,6 +39,19 @@ const STATUS_LABEL: Record<string, string> = {
   absent: 'ขาด', not_checked: 'ยังไม่มา',
 }
 
+// ── Icons ─────────────────────────────────────────────────────
+function ExcelIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/>
+      <line x1="8" y1="17" x2="16" y2="17"/>
+      <line x1="10" y1="9" x2="8" y2="9"/>
+    </svg>
+  )
+}
+
 // ── Location pill ─────────────────────────────────────────────
 function LocPill({ mode }: { mode: 'campus' | 'wfh' | null }) {
   if (!mode) return <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>—</span>
@@ -235,8 +248,9 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         borderRadius: 12, overflow: 'hidden',
         boxShadow: '0 1px 4px rgba(30,36,51,.04)',
       }}>
+      <div className="presence-table-wrap">
         {/* Table header */}
-        <div style={{
+        <div className="presence-table-row" style={{
           display: 'grid',
           gridTemplateColumns: '28px minmax(0,1fr) 64px 90px 64px 90px 88px',
           gap: '0 10px',
@@ -273,6 +287,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
           return (
             <div
               key={row.userId}
+              className="presence-table-row"
               style={{
                 display: 'grid',
                 gridTemplateColumns: '28px minmax(0,1fr) 64px 90px 64px 90px 88px',
@@ -349,7 +364,8 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             </div>
           )
         })}
-      </div>
+      </div>{/* /presence-table-wrap */}
+      </div>{/* /table outer */}
 
       {/* Row count */}
       {visibleRows.length > 0 && (
@@ -358,17 +374,5 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
       )}
     </div>
-  )
-}
-
-function ExcelIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="8" y1="13" x2="16" y2="13"/>
-      <line x1="8" y1="17" x2="16" y2="17"/>
-      <line x1="10" y1="9" x2="8" y2="9"/>
-    </svg>
   )
 }
