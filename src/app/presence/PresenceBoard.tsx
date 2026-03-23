@@ -35,7 +35,7 @@ const STATUS_COLOR: Record<string, { bg: string; text: string; border: string; d
   not_checked: { bg: 'var(--neutral-dim)', text: 'var(--text-secondary)', border: 'var(--line)',      dot: 'var(--line-mid)' },
 }
 const STATUS_LABEL: Record<string, string> = {
-  present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'WFH · สาย',
+  present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'สาย',
   absent: 'ขาด', not_checked: 'ยังไม่มา',
 }
 
@@ -57,6 +57,7 @@ function LocPill({ mode }: { mode: 'campus' | 'wfh' | null }) {
 
 export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresentCount, date }: Props) {
   const [filter, setFilter] = useState<FilterKey>(null)
+  const [search, setSearch] = useState('')
 
   function toggleFilter(key: FilterKey) {
     setFilter(f => f === key ? null : key)
@@ -72,7 +73,11 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
     return true
   }
 
-  const visibleRows = rows.filter(r => matchesFilter(r.effectiveStatus))
+  const q = search.trim().toLowerCase()
+  const visibleRows = rows.filter(r =>
+    matchesFilter(r.effectiveStatus) &&
+    (!q || r.name.toLowerCase().includes(q) || (r.dept ?? '').toLowerCase().includes(q))
+  )
 
   // Summary pills
   const pills = [
@@ -119,6 +124,33 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             )
           })}
         </div>
+      </div>
+
+      {/* ── Search box ───────────────────────────────────────────── */}
+      <div style={{ marginBottom: 10, position: 'relative', maxWidth: 280 }}>
+        <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }}
+          width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="ค้นหาชื่อ / แผนก…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            width: '100%', padding: '7px 28px 7px 28px', borderRadius: 7, fontSize: 13,
+            background: 'var(--bg-surface)', border: '1px solid var(--line-mid)',
+            color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
+            outline: 'none', boxSizing: 'border-box',
+          }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')} style={{
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none',
+            cursor: 'pointer', padding: '2px 4px', lineHeight: 1,
+          }}>✕</button>
+        )}
       </div>
 
       {/* ── Filter bar + Export Excel ───────────────────────────── */}
@@ -199,9 +231,9 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         {/* Table header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '36px 1fr 70px 80px 70px 80px 90px',
-          gap: 0,
-          padding: '8px 16px',
+          gridTemplateColumns: '28px minmax(0,1fr) 64px 90px 64px 90px 88px',
+          gap: '0 10px',
+          padding: '8px 14px',
           background: 'var(--bg-raised)',
           borderBottom: '1px solid var(--line)',
         }}>
@@ -228,9 +260,9 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
               key={row.userId}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '36px 1fr 70px 80px 70px 80px 90px',
-                gap: 0,
-                padding: '9px 16px',
+                gridTemplateColumns: '28px minmax(0,1fr) 64px 90px 64px 90px 88px',
+                gap: '0 10px',
+                padding: '9px 14px',
                 borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--line)' : 'none',
                 alignItems: 'center',
                 borderLeft: `3px solid ${sc.dot}`,

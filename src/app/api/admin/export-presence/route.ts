@@ -16,7 +16,7 @@ function fmtTime(isoStr: string): string {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'WFH · สาย',
+  present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'สาย',
   absent: 'ขาด', not_checked: 'ยังไม่มา',
 }
 

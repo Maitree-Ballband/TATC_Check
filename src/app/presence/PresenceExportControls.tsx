@@ -1,4 +1,5 @@
 'use client'
+import type { CSSProperties } from 'react'
 import { useState } from 'react'
 
 export function PresenceExportControls() {
@@ -7,35 +8,26 @@ export function PresenceExportControls() {
   const [localFrom, setLocalFrom] = useState(today)
   const [localTo,   setLocalTo]   = useState(today)
 
-  const [enableIn,    setEnableIn]    = useState(false)
-  const [enableOut,   setEnableOut]   = useState(false)
-  const [timeInFrom,  setTimeInFrom]  = useState('06:00')
-  const [timeInTo,    setTimeInTo]    = useState('09:00')
-  const [timeOutFrom, setTimeOutFrom] = useState('15:00')
-  const [timeOutTo,   setTimeOutTo]   = useState('18:00')
+  const [enableIn,  setEnableIn]  = useState(false)
+  const [enableOut, setEnableOut] = useState(false)
 
   function doExport(fmt: 'csv' | 'txt') {
     const p = new URLSearchParams({ from: localFrom, to: localTo, format: fmt })
-    if (enableIn)  { p.set('timeInFrom', timeInFrom);  p.set('timeInTo', timeInTo) }
-    if (enableOut) { p.set('timeOutFrom', timeOutFrom); p.set('timeOutTo', timeOutTo) }
+    if (enableIn)  { p.set('timeInFrom', '00:00');  p.set('timeInTo', '23:59') }
+    if (enableOut) { p.set('timeOutFrom', '00:00'); p.set('timeOutTo', '23:59') }
     window.location.href = `/api/admin/export-raw?${p.toString()}`
   }
 
   const canExport = !!(localFrom && localTo && localFrom <= localTo)
 
-  /* ── Shared styles ─────────────────────────────────────────── */
-  const inputS: React.CSSProperties = {
+  const inputS: CSSProperties = {
     padding: '7px 10px', borderRadius: 7, fontSize: 13,
     background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
     color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
     cursor: 'pointer',
   }
 
-  const timeInputS: React.CSSProperties = {
-    ...inputS, padding: '5px 8px', fontSize: 12, width: 86,
-  }
-
-  const labelS: React.CSSProperties = {
+  const labelS: CSSProperties = {
     fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)',
     letterSpacing: '.07em', textTransform: 'uppercase' as const,
     marginBottom: 4, display: 'block',
@@ -80,40 +72,22 @@ export function PresenceExportControls() {
         {/* Divider */}
         <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--line)', margin: '0 2px' }} />
 
-        {/* Time filter */}
+        {/* Column toggles */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>
-            กรองเวลา
+            คอลัมน์เวลา
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, minWidth: 64 }}>
+          <div style={{ display: 'flex', gap: 14 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
               <input type="checkbox" checked={enableIn} onChange={e => setEnableIn(e.target.checked)}
                 style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent)' }} />
-              ช่วงเข้า
+              เวลาเข้า
             </label>
-            <input type="time" value={timeInFrom} onChange={e => setTimeInFrom(e.target.value)}
-              style={enableIn ? timeInputS : { ...timeInputS, opacity: .35, pointerEvents: 'none' }}
-              tabIndex={enableIn ? 0 : -1} />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-            <input type="time" value={timeInTo} onChange={e => setTimeInTo(e.target.value)}
-              style={enableIn ? timeInputS : { ...timeInputS, opacity: .35, pointerEvents: 'none' }}
-              tabIndex={enableIn ? 0 : -1} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500, minWidth: 64 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
               <input type="checkbox" checked={enableOut} onChange={e => setEnableOut(e.target.checked)}
                 style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent)' }} />
-              ช่วงออก
+              เวลาออก
             </label>
-            <input type="time" value={timeOutFrom} onChange={e => setTimeOutFrom(e.target.value)}
-              style={enableOut ? timeInputS : { ...timeInputS, opacity: .35, pointerEvents: 'none' }}
-              tabIndex={enableOut ? 0 : -1} />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-            <input type="time" value={timeOutTo} onChange={e => setTimeOutTo(e.target.value)}
-              style={enableOut ? timeInputS : { ...timeInputS, opacity: .35, pointerEvents: 'none' }}
-              tabIndex={enableOut ? 0 : -1} />
           </div>
         </div>
 
@@ -162,7 +136,9 @@ export function PresenceExportControls() {
       </div>
 
       <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 8 }}>
-        หากไม่เปิดกรองเวลา จะ export ข้อมูลทั้งหมดในช่วงวันที่ที่เลือก
+        {!enableIn && !enableOut
+          ? 'ไม่ได้เลือกคอลัมน์เวลา — จะ export ทั้งเวลาเข้าและเวลาออก'
+          : `จะ export เฉพาะ${[enableIn ? 'เวลาเข้า' : null, enableOut ? 'เวลาออก' : null].filter(Boolean).join(' และ ')}`}
       </div>
     </div>
   )
