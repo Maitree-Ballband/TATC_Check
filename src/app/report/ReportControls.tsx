@@ -12,7 +12,6 @@ export function ReportControls({ from, to }: Props) {
   const [localFrom, setLocalFrom] = useState(from)
   const [localTo,   setLocalTo]   = useState(to)
 
-  // Time filter state
   const [enableIn,    setEnableIn]    = useState(false)
   const [enableOut,   setEnableOut]   = useState(false)
   const [timeInFrom,  setTimeInFrom]  = useState('06:00')
@@ -32,8 +31,6 @@ export function ReportControls({ from, to }: Props) {
     return `/api/admin/export-raw?${p.toString()}`
   }
 
-  const excelUrl = `/api/admin/export?from=${from}&to=${to}`
-
   const inputS: React.CSSProperties = {
     padding: '7px 10px', borderRadius: 7, fontSize: 13,
     background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
@@ -42,9 +39,11 @@ export function ReportControls({ from, to }: Props) {
   }
 
   const timeInputS: React.CSSProperties = {
-    ...inputS,
-    padding: '5px 8px', fontSize: 12, width: 90,
-    opacity: 1,
+    ...inputS, padding: '5px 8px', fontSize: 12, width: 90,
+  }
+
+  const disabledTimeInputS: React.CSSProperties = {
+    ...timeInputS, opacity: .4, pointerEvents: 'none',
   }
 
   const labelS: React.CSSProperties = {
@@ -53,19 +52,13 @@ export function ReportControls({ from, to }: Props) {
     textTransform: 'uppercase', marginBottom: 4,
   }
 
-  const disabledTimeInputS: React.CSSProperties = {
-    ...timeInputS,
-    opacity: .4,
-    pointerEvents: 'none',
-  }
+  const canApply = localFrom && localTo && localFrom <= localTo
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
 
-      {/* ── Row 1: Date range + view + Excel export ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-
-        {/* From */}
+      {/* ── Row 1: Date range + apply ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
         <div>
           <label style={labelS}>ตั้งแต่วันที่</label>
           <input
@@ -78,7 +71,6 @@ export function ReportControls({ from, to }: Props) {
 
         <div style={{ paddingBottom: 8, fontSize: 13, color: 'var(--text-muted)' }}>—</div>
 
-        {/* To */}
         <div>
           <label style={labelS}>ถึงวันที่</label>
           <input
@@ -90,115 +82,82 @@ export function ReportControls({ from, to }: Props) {
           />
         </div>
 
-        {/* Apply */}
         <button
           onClick={apply}
-          disabled={!localFrom || !localTo || localFrom > localTo}
+          disabled={!canApply}
           style={{
-            padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
-            background: 'var(--bg-raised)', color: 'var(--text-secondary)',
-            border: '1px solid var(--line-mid)', cursor: 'pointer',
+            padding: '7px 18px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+            background: canApply ? 'var(--accent)' : 'var(--bg-raised)',
+            color: canApply ? '#fff' : 'var(--text-muted)',
+            border: `1px solid ${canApply ? 'var(--accent)' : 'var(--line-mid)'}`,
+            cursor: canApply ? 'pointer' : 'default',
             fontFamily: "'Sarabun', sans-serif",
-            opacity: (!localFrom || !localTo || localFrom > localTo) ? .45 : 1,
+            transition: 'all .15s',
+            boxShadow: canApply ? '0 2px 6px rgba(61,90,241,.2)' : 'none',
           }}
         >
           ดูรายงาน
         </button>
-
-        <div style={{ width: 1, height: 30, background: 'var(--line-mid)', alignSelf: 'center' }} />
-
-        {/* Export Excel */}
-        <a href={excelUrl} download style={{ textDecoration: 'none' }}>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            padding: '7px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600,
-            background: 'var(--bg-raised)', color: 'var(--text-secondary)',
-            border: '1px solid var(--line-mid)', cursor: 'pointer',
-            fontFamily: "'Sarabun', sans-serif",
-          }}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M6.5 1v8M3.5 6l3 3 3-3M1 10v1.5A1.5 1.5 0 002.5 13h8a1.5 1.5 0 001.5-1.5V10"/>
-            </svg>
-            Excel
-          </span>
-        </a>
       </div>
 
-      {/* ── Row 2: Time-based export panel ── */}
+      {/* ── Row 2: Time filter + export ── */}
       <div style={{
         background: 'var(--bg-raised)', border: '1px solid var(--line)',
         borderRadius: 10, padding: '12px 16px',
         display: 'flex', flexDirection: 'column', gap: 10,
-        alignItems: 'flex-end', width: '100%',
+        alignItems: 'flex-start', width: '100%',
       }}>
-        <div style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', alignSelf: 'flex-start' }}>
-          Export ข้อมูลเวลา (บัตรประชาชน · วันที่ · เวลา)
+        <div style={{
+          fontSize: 10.5, fontWeight: 600, color: 'var(--text-muted)',
+          letterSpacing: '.07em', textTransform: 'uppercase',
+        }}>
+          กรองเวลา &amp; Export
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', width: '100%' }}>
 
           {/* Check-in filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 auto' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
                 checked={enableIn}
                 onChange={e => setEnableIn(e.target.checked)}
                 style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent)' }}
               />
-              เวลาเข้า
+              ช่วงเข้า
             </label>
-            <input
-              type="time"
-              value={timeInFrom}
-              onChange={e => setTimeInFrom(e.target.value)}
-              style={enableIn ? timeInputS : disabledTimeInputS}
-              tabIndex={enableIn ? 0 : -1}
-            />
+            <input type="time" value={timeInFrom} onChange={e => setTimeInFrom(e.target.value)}
+              style={enableIn ? timeInputS : disabledTimeInputS} tabIndex={enableIn ? 0 : -1} />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-            <input
-              type="time"
-              value={timeInTo}
-              onChange={e => setTimeInTo(e.target.value)}
-              style={enableIn ? timeInputS : disabledTimeInputS}
-              tabIndex={enableIn ? 0 : -1}
-            />
+            <input type="time" value={timeInTo} onChange={e => setTimeInTo(e.target.value)}
+              style={enableIn ? timeInputS : disabledTimeInputS} tabIndex={enableIn ? 0 : -1} />
           </div>
 
           {/* Check-out filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 auto' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
               <input
                 type="checkbox"
                 checked={enableOut}
                 onChange={e => setEnableOut(e.target.checked)}
                 style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent)' }}
               />
-              เวลาออก
+              ช่วงออก
             </label>
-            <input
-              type="time"
-              value={timeOutFrom}
-              onChange={e => setTimeOutFrom(e.target.value)}
-              style={enableOut ? timeInputS : disabledTimeInputS}
-              tabIndex={enableOut ? 0 : -1}
-            />
+            <input type="time" value={timeOutFrom} onChange={e => setTimeOutFrom(e.target.value)}
+              style={enableOut ? timeInputS : disabledTimeInputS} tabIndex={enableOut ? 0 : -1} />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>—</span>
-            <input
-              type="time"
-              value={timeOutTo}
-              onChange={e => setTimeOutTo(e.target.value)}
-              style={enableOut ? timeInputS : disabledTimeInputS}
-              tabIndex={enableOut ? 0 : -1}
-            />
+            <input type="time" value={timeOutTo} onChange={e => setTimeOutTo(e.target.value)}
+              style={enableOut ? timeInputS : disabledTimeInputS} tabIndex={enableOut ? 0 : -1} />
           </div>
 
           {/* Export buttons */}
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
             <a href={buildExportUrl('csv')} download style={{ textDecoration: 'none' }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
                 background: 'var(--accent)', color: '#fff',
                 border: '1px solid var(--accent)', cursor: 'pointer',
                 fontFamily: "'Sarabun', sans-serif",
@@ -214,7 +173,7 @@ export function ReportControls({ from, to }: Props) {
             <a href={buildExportUrl('txt')} download style={{ textDecoration: 'none' }}>
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
                 background: 'var(--ok)', color: 'var(--ok-text)',
                 border: '1px solid var(--ok)', cursor: 'pointer',
                 fontFamily: "'Sarabun', sans-serif",
@@ -230,8 +189,8 @@ export function ReportControls({ from, to }: Props) {
 
         </div>
 
-        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', alignSelf: 'flex-start' }}>
-          หากไม่เลือก filter เวลา จะ export เวลาเช็คอินทั้งหมดในช่วงวันที่
+        <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+          หากไม่เลือกกรองเวลา จะ export เวลาเช็คอินทั้งหมดในช่วงวันที่
         </div>
       </div>
 
