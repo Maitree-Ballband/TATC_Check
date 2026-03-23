@@ -156,7 +156,7 @@ export default async function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-raised)' }}>
-                  {['#', 'ครู', 'สถานที่', 'เช็คอิน', 'เช็คเอาท์', 'สถานะ'].map(h => (
+                  {['#', 'ครู', 'เวลาเช็คอิน', 'สถานที่เข้า', 'เวลาเช็คเอาท์', 'สถานที่ออก', 'สถานะ'].map(h => (
                     <th key={h} style={{
                       padding: '9px 14px', fontSize: 10.5, fontWeight: 500,
                       color: 'var(--text-muted)', textAlign: h === '#' ? 'center' : 'left',
@@ -197,21 +197,29 @@ export default async function DashboardPage() {
                         </div>
                       </div>
                     </td>
-                    {/* Location */}
-                    <td style={{ padding: '10px 14px' }}>
-                      <LocBadge mode={row.record?.location_mode ?? null} />
-                    </td>
-                    {/* Check-in */}
-                    <td style={{ padding: '10px 14px', fontSize: 12.5, color: row.record?.check_in_at ? 'var(--text-secondary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                    {/* Check-in time */}
+                    <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: row.record?.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
                       {row.record?.check_in_at
                         ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                         : '—'}
                     </td>
-                    {/* Check-out */}
-                    <td style={{ padding: '10px 14px', fontSize: 12.5, color: row.record?.check_out_at ? 'var(--text-secondary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                    {/* Location in */}
+                    <td style={{ padding: '10px 14px' }}>
+                      {row.record?.check_in_at
+                        ? <LocBadge mode={row.record.location_mode ?? null} />
+                        : <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                    </td>
+                    {/* Check-out time */}
+                    <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: row.record?.check_out_at ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
                       {row.record?.check_out_at
                         ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                         : '—'}
+                    </td>
+                    {/* Location out */}
+                    <td style={{ padding: '10px 14px' }}>
+                      {row.record?.check_out_at
+                        ? <LocBadge mode={row.record.location_mode ?? null} />
+                        : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                     </td>
                     {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
@@ -226,7 +234,7 @@ export default async function DashboardPage() {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: '28px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td colSpan={7} style={{ padding: '28px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
                       ไม่มีข้อมูลครู
                     </td>
                   </tr>

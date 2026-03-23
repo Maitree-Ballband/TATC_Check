@@ -68,7 +68,7 @@ export async function listActiveTeachers() {
 export async function listAllUsers() {
   const { data, error } = await client()
     .from('users')
-    .select('id, line_user_id, full_name_th, national_id, employee_id, department, role, is_active, is_pending, created_at')
+    .select('id, line_user_id, full_name_th, national_id, employee_id, department, role, is_active, is_pending, avatar_url, created_at')
     .order('full_name_th')
   if (error) throw new Error(`listAllUsers: ${error.message}`)
   return (data ?? []) as User[]

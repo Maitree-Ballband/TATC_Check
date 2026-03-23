@@ -71,14 +71,14 @@ export async function GET(req: NextRequest) {
       if (!rec.check_in_at) continue
       const hhmmss = extractHHMMSS(rec.check_in_at)
       if (hhmmss.slice(0, 5) < timeInFrom || hhmmss.slice(0, 5) > timeInTo) continue
-      lines.push(`${national_id},${dateStr}, เข้า${hhmmss} ,${name}`)
+      lines.push(`${national_id},${dateStr},${hhmmss},${name}`)
 
     } else if (!filterIn && filterOut) {
       // ── Check-out filter only → show ออก time ───────────────
       if (!rec.check_out_at) continue
       const hhmmss = extractHHMMSS(rec.check_out_at)
       if (hhmmss.slice(0, 5) < timeOutFrom || hhmmss.slice(0, 5) > timeOutTo) continue
-      lines.push(`${national_id},${dateStr}, ออก${hhmmss} ,${name}`)
+      lines.push(`${national_id},${dateStr},${hhmmss},${name}`)
 
     } else {
       // ── No filter OR both filters → show เข้า + ออก ─────────
@@ -105,16 +105,17 @@ export async function GET(req: NextRequest) {
       if (!inTime && !outTime) continue
 
       if (inTime && outTime) {
-        lines.push(`${national_id},${dateStr}, เข้า${inTime}, ออก${outTime} ,${name}`)
+        lines.push(`${national_id},${dateStr},${inTime},${outTime},${name}`)
       } else if (inTime) {
-        lines.push(`${national_id},${dateStr}, เข้า${inTime} ,${name}`)
+        lines.push(`${national_id},${dateStr},${inTime},${name}`)
       } else {
-        lines.push(`${national_id},${dateStr}, ออก${outTime} ,${name}`)
+        lines.push(`${national_id},${dateStr},${outTime},${name}`)
       }
     }
   }
 
-  const content     = lines.join('\r\n')
+  const bom     = fmt === 'csv' ? '\uFEFF' : ''
+  const content = bom + lines.join('\r\n')
   const filename    = `attendance_${from}_${to}.${fmt}`
   const contentType = fmt === 'csv' ? 'text/csv; charset=utf-8' : 'text/plain; charset=utf-8'
 

@@ -20,6 +20,7 @@ interface Props {
   counts:           { campus: number; wfh: number; late: number; absent: number; not_checked: number }
   total:            number
   notPresentCount:  number
+  date:             string
 }
 
 type FilterKey = 'present' | 'wfh' | 'late' | 'absent' | null
@@ -38,14 +39,30 @@ const STATUS_LABEL: Record<string, string> = {
   absent: 'ขาด', not_checked: 'ยังไม่มา',
 }
 
-export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresentCount }: Props) {
+// ── Location pill ─────────────────────────────────────────────
+function LocPill({ mode }: { mode: 'campus' | 'wfh' | null }) {
+  if (!mode) return <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>—</span>
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+      background: mode === 'wfh' ? 'var(--blue-dim)' : 'var(--ok-dim)',
+      color:      mode === 'wfh' ? 'var(--blue-text)' : 'var(--ok-text)',
+      border:     `1px solid ${mode === 'wfh' ? 'rgba(37,99,235,.2)' : 'rgba(22,163,74,.2)'}`,
+    }}>
+      {mode === 'wfh' ? 'WFH' : 'วิทยาลัย'}
+    </span>
+  )
+}
+
+export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresentCount, date }: Props) {
   const [filter, setFilter] = useState<FilterKey>(null)
 
   function toggleFilter(key: FilterKey) {
     setFilter(f => f === key ? null : key)
   }
 
-  // Filter logic: map FilterKey → effectiveStatus values
+  // Filter logic
   const matchesFilter = (es: string): boolean => {
     if (filter === null)      return true
     if (filter === 'present') return es === 'present'
@@ -104,15 +121,15 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
       </div>
 
-      {/* ── Filter buttons ─────────────────────────────────────── */}
-      <div className="presence-filter-bar" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        {([
+      {/* ── Filter bar + Export Excel ───────────────────────────── */}
+      <div className="presence-filter-bar" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {(([
           { key: null,      label: 'ทั้งหมด',                               count: total,          color: 'var(--accent)' },
           { key: 'present', label: 'วิทยาลัย',                              count: counts.campus,  color: 'var(--ok)' },
           { key: 'wfh',     label: 'WFH',                                   count: counts.wfh,     color: 'var(--blue)' },
           { key: 'late',    label: 'สาย',                                   count: counts.late,    color: 'var(--warn)' },
           { key: 'absent',  label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',   count: notPresentCount, color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
-        ] as { key: FilterKey; label: string; count: number; color: string }[]).map(btn => {
+        ] as { key: FilterKey; label: string; count: number; color: string }[])).map(btn => {
           const isActive = filter === btn.key
           return (
             <button
@@ -153,6 +170,24 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             ✕ ล้างตัวกรอง
           </button>
         )}
+
+        {/* Export Excel button */}
+        <div style={{ marginLeft: 'auto' }}>
+          <button
+            onClick={() => { window.location.href = `/api/admin/export-presence?date=${date}` }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+              background: 'var(--ok)', color: '#fff',
+              border: '1px solid var(--ok)',
+              cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
+              boxShadow: '0 2px 6px rgba(22,163,74,.2)', transition: 'all .15s',
+            }}
+          >
+            <ExcelIcon />
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {/* ── Horizontal list ────────────────────────────────────── */}
@@ -164,13 +199,13 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         {/* Table header */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '36px 1fr 90px 80px 80px',
+          gridTemplateColumns: '36px 1fr 70px 80px 70px 80px 90px',
           gap: 0,
           padding: '8px 16px',
           background: 'var(--bg-raised)',
           borderBottom: '1px solid var(--line)',
         }}>
-          {['#', 'ชื่อ-สกุล / แผนก', 'สถานะ', 'เข้างาน', 'ออกงาน'].map(h => (
+          {['#', 'ชื่อ-สกุล / แผนก', 'เข้างาน', 'สถานที่เข้า', 'ออกงาน', 'สถานที่ออก', 'สถานะ'].map(h => (
             <div key={h} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>
               {h}
             </div>
@@ -186,12 +221,14 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
         {visibleRows.map((row, idx) => {
           const sc = STATUS_COLOR[row.effectiveStatus] ?? STATUS_COLOR.not_checked
+          const locInMode  = row.checkIn  ? row.locMode : null
+          const locOutMode = row.checkOut ? row.locMode : null
           return (
             <div
               key={row.userId}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '36px 1fr 90px 80px 80px',
+                gridTemplateColumns: '36px 1fr 70px 80px 70px 80px 90px',
                 gap: 0,
                 padding: '9px 16px',
                 borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--line)' : 'none',
@@ -232,6 +269,22 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                 </div>
               </div>
 
+              {/* Check-in time */}
+              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkIn ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                {row.checkIn ?? '—'}
+              </div>
+
+              {/* Location in */}
+              <div><LocPill mode={locInMode} /></div>
+
+              {/* Check-out time */}
+              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                {row.checkOut ?? '—'}
+              </div>
+
+              {/* Location out */}
+              <div><LocPill mode={locOutMode} /></div>
+
               {/* Status chip */}
               <div>
                 <span style={{
@@ -246,16 +299,6 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                   {STATUS_LABEL[row.effectiveStatus] ?? row.effectiveStatus}
                 </span>
               </div>
-
-              {/* Check-in time */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkIn ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                {row.checkIn ?? '—'}
-              </div>
-
-              {/* Check-out time */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                {row.checkOut ?? '—'}
-              </div>
             </div>
           )
         })}
@@ -268,5 +311,17 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
       )}
     </div>
+  )
+}
+
+function ExcelIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/>
+      <line x1="8" y1="17" x2="16" y2="17"/>
+      <line x1="10" y1="9" x2="8" y2="9"/>
+    </svg>
   )
 }

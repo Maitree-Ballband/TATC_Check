@@ -6,6 +6,7 @@ import { todayDate, isPastHardAbsentCutoff } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { PresenceDatePicker } from './PresenceDatePicker'
 import { PresenceBoard, type BoardRow } from './PresenceBoard'
+import { PresenceExportControls } from './PresenceExportControls'
 
 export const dynamic   = 'force-dynamic'
 export const revalidate = 0
@@ -144,12 +145,14 @@ export default async function PresencePage({ searchParams }: Props) {
 
       {/* ── Board (client component: summary, filter, cards) ── */}
       <div className="animate-fade-up-d1">
+        <PresenceExportControls />
         <PresenceBoard
           rows={boardRows}
           hardCutoffPassed={hardCutoffPassed}
           counts={counts}
           total={total}
           notPresentCount={notPresentCount}
+          date={date}
         />
       </div>
 

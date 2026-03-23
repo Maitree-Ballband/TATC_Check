@@ -6,7 +6,7 @@ import { format, startOfMonth, endOfMonth, differenceInCalendarDays, parseISO } 
 import { todayDate } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { Chip } from '@/components/ui'
-import { ReportControls } from './ReportControls'
+import { MonthNav } from './MonthNav'
 
 export const dynamic   = 'force-dynamic'
 export const revalidate = 0
@@ -70,15 +70,15 @@ export default async function ReportPage({ searchParams }: Props) {
             รายงาน
           </div>
           <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-.01em', lineHeight: 1.2, marginBottom: 4 }}>
-            สรุปการเข้างาน
+            ภาพรวมประจำเดือน
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
             {rangeLabel} · {daysInRange} วัน
           </div>
         </div>
 
-        {/* Date range picker + export */}
-        <ReportControls from={from} to={to} />
+        {/* Month navigation */}
+        <MonthNav from={from} />
       </div>
 
       {/* ── Aggregate Summary ───────────────────────────────── */}

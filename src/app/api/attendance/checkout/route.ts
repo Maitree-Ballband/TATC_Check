@@ -16,9 +16,6 @@ export async function POST(_req: NextRequest) {
   if (!existing?.check_in_at) {
     return NextResponse.json({ error: 'not_checked_in' }, { status: 409 })
   }
-  if (existing.check_out_at) {
-    return NextResponse.json({ error: 'already_checked_out' }, { status: 409 })
-  }
 
   const cutoff       = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'
   const [cutH, cutM] = cutoff.split(':').map(Number)

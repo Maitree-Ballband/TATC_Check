@@ -157,7 +157,7 @@ export default function CheckinPage() {
 
   const handleCheckin = async () => {
     if (today?.checked_in) return
-    if (isAbsent)              { showToast(`พ้นเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
+    if (isAbsent)              { showToast(`เลยกำหนดเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
     if (gpsState === 'loading') { showToast('กำลังระบุตำแหน่ง กรุณารอสักครู่', 'warn'); return }
     if (gpsState === 'error')   { showToast('กรุณาแก้ไข GPS ก่อนลงชื่อ', 'danger'); return }
     if (isLate)                 { setLateReason(''); setShowReasonModal(true); return }
@@ -165,7 +165,7 @@ export default function CheckinPage() {
   }
 
   const handleCheckout = async () => {
-    if (!today?.checked_in || today?.checked_out) return
+    if (!today?.checked_in) return
     if (!isAfterCheckoutTime()) {
       showToast(`ลงชื่อออกได้หลัง ${CHECKOUT_AFTER} น. เท่านั้น`, 'warn')
       return
@@ -354,7 +354,7 @@ export default function CheckinPage() {
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
                 {isAbsent
                   ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--danger-dim)', border: '1px solid rgba(220,38,38,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)', fontFamily: 'var(--font-body)' }}>
-                      ⛔ พ้นเวลา {CHECKOUT_AFTER} น. แล้ว — สถานะบันทึกเป็น "ขาด"
+                      ⛔ เลยกำหนดเวลา {CHECKOUT_AFTER} น. แล้ว — สถานะบันทึกเป็น "ขาด"
                     </div>
                   : <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
                       ⚠ เกิน {CUTOFF} น. แล้ว — ต้องระบุเหตุผลก่อนลงชื่อ
@@ -473,7 +473,7 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{isAbsent ? 'พ้นเวลาแล้ว' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
+                <span>{isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? fmtTime(today.record.check_in_at)
@@ -489,15 +489,21 @@ export default function CheckinPage() {
               {/* ลงชื่อออก */}
               <button
                 onClick={handleCheckout}
-                disabled={loading || !today?.checked_in || !!today?.checked_out}
+                disabled={loading || !today?.checked_in || !isAfterCheckoutTime()}
                 style={{
                   flex: 1, padding: '22px 8px', borderRadius: 12,
                   fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
                   fontFamily: 'var(--font-heading)',
-                  cursor: (!today?.checked_in || today?.checked_out) ? 'not-allowed' : 'pointer',
-                  background: today?.checked_out ? 'var(--bg-active)' : today?.checked_in ? 'var(--blue-dim)' : 'transparent',
-                  color:      today?.checked_out ? 'var(--text-muted)' : today?.checked_in ? 'var(--blue-text)' : 'var(--text-dim)',
-                  border:     today?.checked_in && !today?.checked_out ? '2px solid rgba(91,142,240,.35)' : '1px solid var(--line-mid)',
+                  cursor: today?.checked_in && isAfterCheckoutTime() ? 'pointer' : 'not-allowed',
+                  background: !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
+                    : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue-dim)',
+                  color: !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
+                    : today?.checked_out ? 'var(--ok-text)' : 'var(--blue-text)',
+                  border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out
+                    ? '2px solid rgba(91,142,240,.35)'
+                    : today?.checked_in && isAfterCheckoutTime() && today?.checked_out
+                    ? '1px solid rgba(22,163,74,.3)'
+                    : '1px solid var(--line-mid)',
                   transition: 'all .15s',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
