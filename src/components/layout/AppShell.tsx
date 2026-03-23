@@ -126,9 +126,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div
             style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 8, padding: '7px 8px', margin: '-7px -8px' }}
           >
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--accent)', flexShrink: 0, fontFamily: 'var(--font-heading)' }}>
-              {initials}
-            </div>
+            {session?.user?.image
+              ? <img src={session.user.image} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid var(--line-mid)' }} />
+              : <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: 'var(--accent)', flexShrink: 0, fontFamily: 'var(--font-heading)' }}>
+                  {initials}
+                </div>
+            }
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'var(--font-body)' }}>{session?.user?.nameTh ?? '—'}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>{role === 'admin' ? 'ผู้ดูแลระบบ' : role === 'executive' ? 'ผู้บริหาร' : 'ครู/บุคลากร'}</div>

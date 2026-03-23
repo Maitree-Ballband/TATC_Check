@@ -221,14 +221,17 @@ export default async function DashboardPage() {
                     {/* Avatar + name */}
                     <td style={{ padding: '10px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 30, height: 30, borderRadius: '50%',
-                          background: 'var(--accent-dim)', border: '1px solid rgba(61,90,241,.15)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10.5, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-                        }}>
-                          {row.user.full_name_th.slice(0, 2)}
-                        </div>
+                        {row.user.avatar_url
+                          ? <img src={row.user.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(61,90,241,.15)' }} />
+                          : <div style={{
+                              width: 30, height: 30, borderRadius: '50%',
+                              background: 'var(--accent-dim)', border: '1px solid rgba(61,90,241,.15)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 10.5, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+                            }}>
+                              {row.user.full_name_th.slice(0, 2)}
+                            </div>
+                        }
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                             {row.user.full_name_th}

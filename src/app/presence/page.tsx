@@ -85,6 +85,7 @@ export default async function PresencePage({ searchParams }: Props) {
       : null,
     lateReason: r.record?.late_reason ?? null,
     initials:   r.user.full_name_th.slice(0, 2),
+    avatarUrl:  r.user.avatar_url ?? null,
   }))
 
   return (

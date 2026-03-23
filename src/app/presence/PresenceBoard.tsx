@@ -11,6 +11,7 @@ export type BoardRow = {
   checkOut:        string | null
   lateReason:      string | null
   initials:        string
+  avatarUrl:       string | null
 }
 
 interface Props {
@@ -254,14 +255,17 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, seg, notP
                   }}>
                     {/* Avatar + Name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{
-                        width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                        background: group.dimColor, border: `1.5px solid ${group.borderColor}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10.5, fontWeight: 700, color: group.textColor,
-                      }}>
-                        {row.initials}
-                      </div>
+                      {row.avatarUrl
+                        ? <img src={row.avatarUrl} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1.5px solid ${group.borderColor}` }} />
+                        : <div style={{
+                            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                            background: group.dimColor, border: `1.5px solid ${group.borderColor}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10.5, fontWeight: 700, color: group.textColor,
+                          }}>
+                            {row.initials}
+                          </div>
+                      }
                       <div style={{ minWidth: 0 }}>
                         <div style={{
                           fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',

@@ -5,13 +5,15 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Chip, LocBadge, LiveDot, Panel, PanelHeader } from '@/components/ui'
 import type { TodayStatus, AttendanceRecord } from '@/types'
 
+// ── Environment config ────────────────────────────────────────
 const CUTOFF         = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF           ?? '08:00'
 const CHECKOUT_AFTER = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'
-const SCHOOL_LAT     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT    ?? '13.736717')
-const SCHOOL_LNG     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG    ?? '100.523186')
+const SCHOOL_LAT     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT     ?? '13.736717')
+const SCHOOL_LNG     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG     ?? '100.523186')
 const RADIUS_M       = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '500')
 const SCHOOL_TZ      = process.env.NEXT_PUBLIC_SCHOOL_TZ                ?? 'Asia/Bangkok'
 
+// ── Time helpers ──────────────────────────────────────────────
 function bkkMinutes(date: Date): number {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
@@ -25,48 +27,57 @@ function bkkDateStr(date: Date): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: SCHOOL_TZ }).format(date)
 }
 
-function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function isAfterCheckoutTime() {
+function isAfterCheckoutTime(): boolean {
   const [h, m] = CHECKOUT_AFTER.split(':').map(Number)
   return bkkMinutes(new Date()) >= h * 60 + m
 }
 
-function isAfterCutoff() {
+function isAfterCutoff(): boolean {
   const [h, m] = CUTOFF.split(':').map(Number)
   return bkkMinutes(new Date()) > h * 60 + m
 }
 
-// GPS error code meanings (GeolocationPositionError.code)
-const GPS_ERROR: Record<number, { title: string; hint: string }> = {
-  0: { title: 'เบราว์เซอร์ไม่รองรับ GPS', hint: 'กรุณาเปิดเว็บใน Chrome หรือ Safari' },
-  1: { title: 'ไม่ได้รับอนุญาต GPS',      hint: 'เปิดการตั้งค่า → ความเป็นส่วนตัว → ตำแหน่ง → อนุญาตสำหรับเว็บไซต์นี้' },
-  2: { title: 'ระบุตำแหน่งไม่ได้',        hint: 'ลองออกไปที่โล่ง หรือเปิด Wi-Fi แล้วลองใหม่' },
-  3: { title: 'GPS ช้าเกินไป',             hint: 'ลองย้ายไปที่โล่ง แล้วกด "ลองใหม่"' },
+// ── Geolocation helper ────────────────────────────────────────
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R    = 6371000
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a    = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
+// ── GPS error messages ────────────────────────────────────────
+const GPS_ERROR: Record<number, { title: string; hint: string }> = {
+  0: { title: 'เบราว์เซอร์ไม่รองรับ GPS',   hint: 'กรุณาเปิดเว็บใน Chrome หรือ Safari' },
+  1: { title: 'ยังไม่ได้อนุญาตใช้ GPS',     hint: 'ไปที่ตั้งค่าเบราว์เซอร์ → ตำแหน่ง → อนุญาตสำหรับเว็บไซต์นี้' },
+  2: { title: 'ระบุตำแหน่งไม่ได้ในขณะนี้',  hint: 'ลองออกไปที่โล่ง หรือเปิด Wi-Fi แล้วกด "ลองใหม่"' },
+  3: { title: 'GPS ใช้เวลานานเกินไป',        hint: 'ลองย้ายไปที่โล่ง แล้วกด "ลองใหม่"' },
+}
+
+// ── Static style constants ────────────────────────────────────
+const TOAST_COLOR: Record<string, string> = {
+  ok: 'var(--ok)', warn: 'var(--warn)', danger: 'var(--danger)',
+}
+
+// ─────────────────────────────────────────────────────────────
 export default function CheckinPage() {
   const { data: session } = useSession()
-  const [today, setToday]               = useState<TodayStatus | null>(null)
-  const [history, setHistory]           = useState<AttendanceRecord[]>([])
-  const [gpsState, setGpsState]         = useState<'loading' | 'ok' | 'error'>('loading')
-  const [gpsErrCode, setGpsErrCode]     = useState<number>(0)
-  const [coords, setCoords]             = useState<{ lat: number; lng: number } | null>(null)
-  const [distance, setDistance]         = useState<number | null>(null)
-  const [locMode, setLocMode]           = useState<'campus' | 'wfh'>('wfh')
-  const [loading, setLoading]           = useState(false)
-  const [clock, setClock]               = useState('')
-  const [toast, setToast]               = useState<{ msg: string; type: string } | null>(null)
-  const [showReasonModal, setShowReasonModal] = useState(false)
-  const [lateReason, setLateReason]     = useState('')
 
-  // Live clock
+  const [today,           setToday]           = useState<TodayStatus | null>(null)
+  const [history,         setHistory]         = useState<AttendanceRecord[]>([])
+  const [gpsState,        setGpsState]        = useState<'loading' | 'ok' | 'error'>('loading')
+  const [gpsErrCode,      setGpsErrCode]      = useState<number>(0)
+  const [coords,          setCoords]          = useState<{ lat: number; lng: number } | null>(null)
+  const [distance,        setDistance]        = useState<number | null>(null)
+  const [locMode,         setLocMode]         = useState<'campus' | 'wfh'>('wfh')
+  const [loading,         setLoading]         = useState(false)
+  const [clock,           setClock]           = useState('')
+  const [toast,           setToast]           = useState<{ msg: string; type: string } | null>(null)
+  const [showReasonModal, setShowReasonModal] = useState(false)
+  const [lateReason,      setLateReason]      = useState('')
+
+  // Live clock (ticks every second)
   useEffect(() => {
     const tick = () => setClock(new Date().toLocaleTimeString('th-TH', {
       timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -76,10 +87,10 @@ export default function CheckinPage() {
     return () => clearInterval(id)
   }, [])
 
-  // GPS detection — extracted for retry
+  // GPS — extracted so the retry button can call it directly
   const detectGps = useCallback(() => {
     if (!navigator.geolocation) {
-      setGpsState('error'); setGpsErrCode(0); setLocMode('wfh'); return
+      setGpsState('error'); setGpsErrCode(0); return
     }
     setGpsState('loading')
     navigator.geolocation.getCurrentPosition(
@@ -91,17 +102,14 @@ export default function CheckinPage() {
         setLocMode(dist <= RADIUS_M ? 'campus' : 'wfh')
         setGpsState('ok')
       },
-      err => {
-        setGpsState('error')
-        setGpsErrCode(err.code)
-        setLocMode('wfh')   // always fall back to WFH — never block check-in
-      },
+      err => { setGpsState('error'); setGpsErrCode(err.code) },
       { enableHighAccuracy: true, timeout: 10000 },
     )
   }, [])
 
   useEffect(() => { detectGps() }, [detectGps])
 
+  // Data fetchers
   const fetchToday = useCallback(async () => {
     const res = await fetch('/api/attendance/today')
     if (res.ok) setToday(await res.json())
@@ -121,7 +129,7 @@ export default function CheckinPage() {
     setTimeout(() => setToast(null), 3200)
   }
 
-  // Actual API call — accepts optional late reason
+  // Submit check-in (with optional late reason)
   const doCheckin = useCallback(async (reason?: string) => {
     setShowReasonModal(false)
     setLoading(true)
@@ -137,10 +145,11 @@ export default function CheckinPage() {
 
     if (res.ok) {
       const label = locMode === 'campus' ? 'วิทยาลัย' : 'WFH'
-      showToast(`เช็คอินสำเร็จ — ${label} · ${new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
+      const time  = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
+      showToast(`ลงชื่อเข้างานสำเร็จ — ${label} · ${time} น.`, 'ok')
       fetchToday(); fetchHistory()
     } else if (data.error === 'already_checked_in') {
-      showToast('เช็คอินแล้วในวันนี้', 'warn')
+      showToast('ลงชื่อเข้างานแล้วในวันนี้', 'warn')
     } else {
       showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'danger')
     }
@@ -148,43 +157,46 @@ export default function CheckinPage() {
 
   const handleCheckin = async () => {
     if (today?.checked_in) return
-    if (isAbsent) { showToast(`พ้นเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
-    if (gpsState === 'loading') { showToast('กำลังตรวจสอบตำแหน่ง กรุณารอสักครู่', 'warn'); return }
-    if (gpsState === 'error')   { showToast('กรุณาแก้ไข GPS แล้วกด "ลองใหม่" ก่อนเช็คอิน', 'danger'); return }
-    if (isLate) { setLateReason(''); setShowReasonModal(true); return }
+    if (isAbsent)              { showToast(`พ้นเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
+    if (gpsState === 'loading') { showToast('กำลังระบุตำแหน่ง กรุณารอสักครู่', 'warn'); return }
+    if (gpsState === 'error')   { showToast('กรุณาแก้ไข GPS ก่อนลงชื่อ', 'danger'); return }
+    if (isLate)                 { setLateReason(''); setShowReasonModal(true); return }
     doCheckin()
   }
 
   const handleCheckout = async () => {
     if (!today?.checked_in || today?.checked_out) return
-    if (!isAfterCheckoutTime()) { showToast(`เช็คเอาท์ได้หลัง ${CHECKOUT_AFTER} น. เท่านั้น`, 'warn'); return }
+    if (!isAfterCheckoutTime()) {
+      showToast(`ลงชื่อออกได้หลัง ${CHECKOUT_AFTER} น. เท่านั้น`, 'warn')
+      return
+    }
     setLoading(true)
     const res = await fetch('/api/attendance/checkout', { method: 'POST' })
     setLoading(false)
     if (res.ok) {
-      showToast(`เช็คเอาท์สำเร็จ · ${new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
+      const time = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
+      showToast(`ลงชื่อออกงานสำเร็จ · ${time} น.`, 'ok')
       fetchToday()
     }
   }
 
+  // Derived state
   const isAbsent = !today?.checked_in && isAfterCheckoutTime()
   const isLate   = !today?.checked_in && isAfterCutoff() && !isAfterCheckoutTime()
 
   const statusChip = () => {
-    if (isAbsent)                               return <Chip variant="danger"  label="ขาด" />
-    if (!today?.checked_in)                     return <Chip variant="neutral" label="ยังไม่ลงชื่อ" />
-    if (today.record?.location_mode === 'wfh')  return <Chip variant="blue"   label="WFH" />
-    if (today.record?.status === 'late')        return <Chip variant="warn"   label="สาย" />
+    if (isAbsent)                              return <Chip variant="danger"  label="ขาด" />
+    if (!today?.checked_in)                    return <Chip variant="neutral" label="ยังไม่ลงชื่อ" />
+    if (today.record?.location_mode === 'wfh') return <Chip variant="blue"   label="WFH" />
+    if (today.record?.status === 'late')       return <Chip variant="warn"   label="สาย" />
     return <Chip variant="ok" label="ลงชื่อแล้ว" />
   }
 
-  const toastColor: Record<string, string> = { ok: 'var(--ok)', warn: 'var(--warn)', danger: 'var(--danger)' }
-
-  // ── GPS badge content ──
+  // GPS badge appearance
   const gpsInfo = (() => {
     if (gpsState === 'loading') return {
       bg: 'var(--bg-raised)', border: '1px solid var(--line-mid)', dot: 'var(--text-dim)',
-      title: 'กำลังตรวจสอบตำแหน่ง...', sub: 'รอสักครู่',
+      title: 'กำลังระบุตำแหน่ง GPS...', sub: 'กรุณารอสักครู่',
     }
     if (gpsState === 'error') {
       const e = GPS_ERROR[gpsErrCode] ?? GPS_ERROR[2]
@@ -193,7 +205,6 @@ export default function CheckinPage() {
         title: e.title, sub: e.hint, isError: true,
       }
     }
-    // ok
     if (locMode === 'campus') return {
       bg: 'var(--ok-dim)', border: '1px solid rgba(95,184,130,.2)', dot: 'var(--ok)',
       title: 'อยู่ในพื้นที่วิทยาลัย',
@@ -201,18 +212,18 @@ export default function CheckinPage() {
     }
     return {
       bg: 'var(--blue-dim)', border: '1px solid rgba(91,142,240,.2)', dot: 'var(--blue)',
-      title: distance !== null ? `อยู่นอกพื้นที่ (ห่าง ${Math.round(distance)} ม.)` : 'อยู่นอกพื้นที่ (WFH)',
-      sub: `เกณฑ์วิทยาลัย ≤ ${RADIUS_M} ม.`,
+      title: distance !== null ? `อยู่นอกพื้นที่ — ห่าง ${Math.round(distance)} ม.` : 'อยู่นอกพื้นที่วิทยาลัย',
+      sub: `จะลงชื่อในโหมด WFH (เกณฑ์วิทยาลัย ≤ ${RADIUS_M} ม.)`,
     }
   })()
 
-  // Button appearance
+  // Check-in button appearance
   const checkinBtnDisabled = loading || !!today?.checked_in || isAbsent || gpsState === 'loading' || gpsState === 'error'
-  const checkinBtnBg = today?.checked_in    ? 'var(--bg-active)'
-    : isAbsent                              ? 'var(--danger-dim)'
-    : gpsState === 'error'                  ? 'var(--danger-dim)'
-    : isLate                                ? 'var(--warn-dim)'
-    : gpsState === 'loading'                ? 'var(--bg-raised)'
+  const checkinBtnBg = today?.checked_in  ? 'var(--bg-active)'
+    : isAbsent                            ? 'var(--danger-dim)'
+    : gpsState === 'error'                ? 'var(--danger-dim)'
+    : isLate                              ? 'var(--warn-dim)'
+    : gpsState === 'loading'              ? 'var(--bg-raised)'
     : 'var(--text-primary)'
   const checkinBtnColor = today?.checked_in ? 'var(--text-muted)'
     : isAbsent                              ? 'var(--danger-text)'
@@ -221,58 +232,74 @@ export default function CheckinPage() {
     : gpsState === 'loading'                ? 'var(--text-dim)'
     : 'var(--bg-base)'
 
+  // Format timestamp to HH:MM น.
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
+
   return (
     <AppShell>
-      {/* Toast */}
+
+      {/* ── Toast notification ── */}
       {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 16, left: 16, background: 'var(--bg-raised)', border: '1px solid var(--line-mid)', borderRadius: 8, padding: '11px 16px', fontSize: 13, color: 'var(--text-primary)', zIndex: 200, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 32px rgba(0,0,0,.5)', maxWidth: 400, margin: '0 auto' }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: toastColor[toast.type] ?? 'var(--ok)', flexShrink: 0 }} />
+        <div style={{
+          position: 'fixed', bottom: 24, right: 16, left: 16, zIndex: 200,
+          background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
+          borderRadius: 8, padding: '12px 16px', fontSize: 14,
+          color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10,
+          boxShadow: '0 8px 32px rgba(0,0,0,.5)', maxWidth: 420, margin: '0 auto',
+        }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: TOAST_COLOR[toast.type] ?? 'var(--ok)', flexShrink: 0 }} />
           {toast.msg}
         </div>
       )}
 
-      {/* Late Reason Modal */}
+      {/* ── Late-reason modal (bottom sheet) ── */}
       {showReasonModal && (
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setShowReasonModal(false) }}
         >
           <div style={{ background: 'var(--bg-surface)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 480, boxShadow: '0 -8px 40px rgba(0,0,0,.2)' }}>
+            {/* Handle bar */}
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-mid)', margin: '0 auto 20px' }} />
+
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', marginBottom: 6 }}>
-              ลงชื่อเข้าเกินเวลา
+              บันทึกการมาสาย
             </div>
-            <div style={{ fontSize: 13.5, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginBottom: 16 }}>
-              คุณลงชื่อหลัง {CUTOFF} น. สถานะจะถูกบันทึกเป็น{' '}
-              <strong style={{ color: 'var(--warn-text)' }}>สาย</strong><br/>
-              กรุณาระบุเหตุผล <strong>อย่างน้อย 10 ตัวอักษร</strong> เพื่อดำเนินการต่อ
+            <div style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginBottom: 16, lineHeight: 1.6 }}>
+              คุณลงชื่อหลัง {CUTOFF} น. — สถานะจะถูกบันทึกเป็น{' '}
+              <strong style={{ color: 'var(--warn-text)' }}>มาสาย</strong><br />
+              กรุณาระบุเหตุผล <strong>อย่างน้อย 10 ตัวอักษร</strong>
             </div>
+
             <textarea
               value={lateReason}
-              onChange={e => setLateReason(e.target.value)}
-              placeholder="ระบุเหตุผลที่มาสาย เช่น ติดภารกิจราชการ, รถติด, ไม่สบาย..."
+              onChange={e => setLateReason(e.target.value.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9 ,.()\-\n]/g, ''))}
+              placeholder="เช่น ติดภารกิจราชการ, รถติด, ไม่สบาย..."
               rows={3}
               maxLength={500}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 8,
                 border: `1px solid ${lateReason.length > 0 && lateReason.trim().length < 10 ? 'var(--danger)' : 'var(--line-mid)'}`,
-                background: 'var(--bg-raised)',
-                color: 'var(--text-primary)', fontFamily: 'var(--font-body)', fontSize: 14,
+                background: 'var(--bg-raised)', color: 'var(--text-primary)',
+                fontFamily: 'var(--font-body)', fontSize: 14,
                 resize: 'none', lineHeight: 1.6, marginBottom: 4,
+                boxSizing: 'border-box',
               }}
             />
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              {lateReason.length > 0 && lateReason.trim().length < 10 ? (
-                <span style={{ fontSize: 11, color: 'var(--danger-text)' }}>ต้องกรอกอย่างน้อย 10 ตัวอักษร ({lateReason.trim().length}/10)</span>
-              ) : (
-                <span />
-              )}
-              <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{lateReason.length}/500</span>
+              {lateReason.length > 0 && lateReason.trim().length < 10
+                ? <span style={{ fontSize: 12, color: 'var(--danger-text)' }}>ต้องกรอกอย่างน้อย 10 ตัวอักษร ({lateReason.trim().length}/10)</span>
+                : <span />
+              }
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{lateReason.length}/500</span>
             </div>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={() => setShowReasonModal(false)}
-                style={{ flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-heading)', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '13px', borderRadius: 10, border: '1px solid var(--line-mid)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-heading)', cursor: 'pointer' }}
               >
                 ยกเลิก
               </button>
@@ -280,14 +307,14 @@ export default function CheckinPage() {
                 onClick={() => doCheckin(lateReason)}
                 disabled={lateReason.trim().length < 10 || loading}
                 style={{
-                  flex: 2, padding: '12px', borderRadius: 10, border: 'none',
+                  flex: 2, padding: '13px', borderRadius: 10, border: 'none',
                   background: lateReason.trim().length >= 10 ? 'var(--warn)' : 'var(--bg-active)',
-                  color: lateReason.trim().length >= 10 ? '#fff' : 'var(--text-dim)',
+                  color:      lateReason.trim().length >= 10 ? '#fff'         : 'var(--text-dim)',
                   fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-heading)',
                   cursor: lateReason.trim().length >= 10 ? 'pointer' : 'not-allowed',
                 }}
               >
-                ยืนยันลงชื่อสาย
+                ยืนยันลงชื่อ (สาย)
               </button>
             </div>
           </div>
@@ -295,72 +322,79 @@ export default function CheckinPage() {
       )}
 
       <div className="animate-fade-up checkin-wrap">
-        {/* Header */}
+
+        {/* ── Page header ── */}
         <div style={{ marginBottom: 22 }}>
-          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>เช็คอิน · วันนี้</div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', letterSpacing: '-.01em' }}>ยืนยันการเข้างาน</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            เช็คอิน · วันนี้
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', letterSpacing: '-.01em' }}>
+            ลงชื่อเข้า-ออกงาน
+          </div>
         </div>
 
-        {/* Main card */}
+        {/* ── Main card ── */}
         <div className="animate-fade-up-d1" style={{ background: 'var(--bg-surface)', border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
 
-          {/* Clock section */}
+          {/* Clock + status banner */}
           <div style={{ padding: '20px 20px 16px', textAlign: 'center' }}>
-            <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}><LiveDot label="ระบบออนไลน์" /></div>
-            <div className="checkin-clock" style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-.04em', color: 'var(--text-primary)', lineHeight: 1, marginBottom: 4, fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
+              <LiveDot label="ระบบออนไลน์" />
+            </div>
+            <div className="checkin-clock" style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-.04em', color: 'var(--text-primary)', lineHeight: 1, marginBottom: 6, fontVariantNumeric: 'tabular-nums' }}>
               {clock}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
               {new Date().toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
-            {isLate && (
-              <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.25)', borderRadius: 6, padding: '4px 10px', fontSize: 12, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
-                ⚠ เกิน {CUTOFF} น. แล้ว — การลงชื่อต้องระบุเหตุผล
+
+            {/* Status banner: absent or late */}
+            {(isAbsent || isLate) && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                {isAbsent
+                  ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--danger-dim)', border: '1px solid rgba(220,38,38,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)', fontFamily: 'var(--font-body)' }}>
+                      ⛔ พ้นเวลา {CHECKOUT_AFTER} น. แล้ว — สถานะบันทึกเป็น "ขาด"
+                    </div>
+                  : <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
+                      ⚠ เกิน {CUTOFF} น. แล้ว — ต้องระบุเหตุผลก่อนลงชื่อ
+                    </div>
+                }
               </div>
             )}
           </div>
 
-          {/* GPS location badge */}
+          {/* GPS badge */}
           <div style={{ padding: '0 20px 16px' }}>
             <div style={{ borderRadius: 10, padding: '12px 16px', background: gpsInfo.bg, border: gpsInfo.border }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: gpsInfo.dot, flexShrink: 0, marginTop: 5 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: gpsInfo.dot, flexShrink: 0, marginTop: 6 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>
                     {gpsInfo.title}
                   </div>
-                  <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--text-muted)', marginTop: 3 }}>
                     {gpsInfo.sub}
                   </div>
 
-                  {/* GPS error: must retry — no WFH fallback */}
+                  {/* GPS error actions */}
                   {gpsInfo.isError && (
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                         <button
                           onClick={detectGps}
-                          style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--danger-text)', background: 'var(--danger-dim)', color: 'var(--danger-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                          style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--danger-text)', background: 'var(--danger-dim)', color: 'var(--danger-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                         >
                           ↺ ลองใหม่
                         </button>
-                        <span style={{ fontSize: 12, color: 'var(--danger-text)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
-                          ต้องแก้ไข GPS ก่อนจึงเช็คอินได้
+                        <span style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
+                          ต้องแก้ไข GPS ก่อนจึงลงชื่อได้
                         </span>
                       </div>
                       {gpsErrCode !== 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontSize: 13 }}>💡</span>
-                          แนะนำ: ใช้ <strong>Chrome</strong> หรือ <strong>Safari</strong> เพื่อผลลัพธ์ที่ดีกว่า
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          💡 แนะนำ: ใช้ <strong>Chrome</strong> หรือ <strong>Safari</strong> เพื่อผลลัพธ์ที่ดีกว่า
                         </div>
                       )}
-                    </div>
-                  )}
-
-
-                  {/* GPS ok + wfh (out of range): show current mode */}
-                  {gpsState === 'ok' && locMode === 'wfh' && (
-                    <div style={{ marginTop: 6, fontSize: 11, color: 'var(--blue-text)', fontFamily: 'var(--font-body)' }}>
-                      จะเช็คอินในโหมด <strong>WFH</strong>
                     </div>
                   )}
                 </div>
@@ -372,38 +406,48 @@ export default function CheckinPage() {
           <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {session?.user?.image
-                ? <img src={session.user.image} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--line)' }} />
-                : <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                ? <img src={session.user.image} alt="" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--line)' }} />
+                : <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
                     {session?.user?.nameTh?.slice(0, 2) ?? '??'}
                   </div>
               }
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.nameTh}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{session?.user?.dept ?? 'ไม่ระบุแผนก'}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {session?.user?.nameTh}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginTop: 1 }}>
+                  {session?.user?.dept ?? 'ไม่ระบุแผนก'}
+                </div>
               </div>
-              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>{statusChip()}</div>
+              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                {statusChip()}
+              </div>
             </div>
 
-            {/* Summary row after checked in */}
+            {/* Today summary (shown after check-in) */}
             {today?.checked_in && today.record && (
               <div style={{ background: 'var(--bg-raised)', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 14px', marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 {[
-                  { label: 'ลงชื่อเข้า', val: today.record.check_in_at ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
-                  { label: 'ลงชื่อออก', val: today.record.check_out_at ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
-                  { label: 'สถานที่', val: today.record.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย' },
+                  { label: 'ลงชื่อเข้า',  val: today.record.check_in_at  ? fmtTime(today.record.check_in_at)  : '—' },
+                  { label: 'ลงชื่อออก',  val: today.record.check_out_at ? fmtTime(today.record.check_out_at) : '—' },
+                  { label: 'สถานที่',     val: today.record.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย' },
                 ].map(f => (
                   <div key={f.label}>
-                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 3 }}>{f.label}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{f.val}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 3 }}>
+                      {f.label}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                      {f.val}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Late reason display */}
+            {/* Late reason (shown when record has one) */}
             {today?.record?.late_reason && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.2)', borderRadius: 8, fontSize: 12, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
-                <span style={{ fontWeight: 600 }}>เหตุผล: </span>{today.record.late_reason}
+              <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.2)', borderRadius: 8, fontSize: 13, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
+                <span style={{ fontWeight: 600 }}>เหตุผลที่มาสาย: </span>{today.record.late_reason}
               </div>
             )}
           </div>
@@ -423,19 +467,19 @@ export default function CheckinPage() {
                   cursor: checkinBtnDisabled ? 'not-allowed' : 'pointer',
                   background: checkinBtnBg,
                   color: checkinBtnColor,
-                  transition: 'all .15s',
                   opacity: gpsState === 'loading' ? 0.5 : 1,
+                  transition: 'all .15s',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{isAbsent ? 'ขาด' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้า'}</span>
-                <span style={{ fontSize: 11, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                <span>{isAbsent ? 'พ้นเวลาแล้ว' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_in && today.record?.check_in_at
-                    ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
-                    : isAbsent      ? `พ้น ${CHECKOUT_AFTER} น.`
-                    : isLate  ? 'ต้องระบุเหตุผล'
-                    : gpsState === 'loading' ? 'กำลังตรวจสอบ...'
-                    : gpsState === 'error'   ? 'ต้องแก้ไข GPS ก่อน'
+                    ? fmtTime(today.record.check_in_at)
+                    : isAbsent           ? `เกิน ${CHECKOUT_AFTER} น.`
+                    : isLate             ? 'ต้องระบุเหตุผล'
+                    : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง...'
+                    : gpsState === 'error'   ? 'แก้ไข GPS ก่อน'
                     : locMode === 'campus'   ? 'วิทยาลัย'
                     : 'WFH'}
                 </span>
@@ -451,28 +495,29 @@ export default function CheckinPage() {
                   fontFamily: 'var(--font-heading)',
                   cursor: (!today?.checked_in || today?.checked_out) ? 'not-allowed' : 'pointer',
                   background: today?.checked_out ? 'var(--bg-active)' : today?.checked_in ? 'var(--blue-dim)' : 'transparent',
-                  color: today?.checked_out ? 'var(--text-muted)' : today?.checked_in ? 'var(--blue-text)' : 'var(--text-dim)',
-                  border: today?.checked_in && !today?.checked_out ? '2px solid rgba(91,142,240,.35)' : '1px solid var(--line-mid)',
+                  color:      today?.checked_out ? 'var(--text-muted)' : today?.checked_in ? 'var(--blue-text)' : 'var(--text-dim)',
+                  border:     today?.checked_in && !today?.checked_out ? '2px solid rgba(91,142,240,.35)' : '1px solid var(--line-mid)',
                   transition: 'all .15s',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>ลงชื่อออก</span>
-                <span style={{ fontSize: 11, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                <span>ลงชื่อออกงาน</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_out && today.record?.check_out_at
-                    ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
-                    : 'หลัง ' + CHECKOUT_AFTER + ' น.'}
+                    ? fmtTime(today.record.check_out_at)
+                    : `หลัง ${CHECKOUT_AFTER} น.`}
                 </span>
               </button>
             </div>
 
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', textAlign: 'center', lineHeight: 1.7 }}>
-              หลัง {CUTOFF} น. = สาย (ต้องระบุเหตุผล) · ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
+            {/* Footer rule */}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
+              เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
             </div>
           </div>
         </div>
 
-        {/* History */}
+        {/* ── History (7 days) ── */}
         <div className="animate-fade-up-d2">
           <Panel>
             <PanelHeader title="ประวัติ 7 วันล่าสุด" />
@@ -481,28 +526,38 @@ export default function CheckinPage() {
             <div className="checkin-hist-desktop">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>{['วันที่', 'สถานที่', 'ลงชื่อเข้า', 'ลงชื่อออก', 'สถานะ'].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--line)', fontFamily: "'Sarabun', sans-serif" }}>{h}</th>
-                  ))}</tr>
+                  <tr>
+                    {['วันที่', 'สถานที่', 'เข้างาน', 'ออกงาน', 'สถานะ'].map(h => (
+                      <th key={h} style={{ padding: '10px 14px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-body)', letterSpacing: '.03em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
                 </thead>
                 <tbody>
                   {history.length === 0 && (
-                    <tr><td colSpan={5} style={{ padding: '24px 14px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontFamily: "'Sarabun', sans-serif" }}>ไม่มีประวัติ</td></tr>
+                    <tr>
+                      <td colSpan={5} style={{ padding: '28px 14px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+                        ยังไม่มีประวัติการลงชื่อ
+                      </td>
+                    </tr>
                   )}
                   {history.map(r => (
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: '11px 14px', fontSize: 14, color: 'var(--text-secondary)', fontFamily: "'Sarabun', sans-serif" }}>
+                      <td style={{ padding: '11px 14px', fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
                         {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: '2-digit', month: 'short' })}
                       </td>
-                      <td style={{ padding: '11px 14px' }}><LocBadge mode={r.location_mode} /></td>
-                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: "'Sarabun', sans-serif", color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
+                      <td style={{ padding: '11px 14px' }}>
+                        <LocBadge mode={r.location_mode} />
                       </td>
-                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: "'Sarabun', sans-serif", color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
+                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
+                        {r.check_in_at  ? fmtTime(r.check_in_at)  : '—'}
+                      </td>
+                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
+                        {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
                       </td>
                       <td style={{ padding: '11px 14px' }}>
-                        {r.status === 'present' && <Chip variant="ok"   label="ปกติ" />}
+                        {r.status === 'present' && <Chip variant="ok"   label="วิทยาลัย" />}
                         {r.status === 'late'    && <Chip variant="warn" label="สาย" />}
                       </td>
                     </tr>
@@ -514,25 +569,27 @@ export default function CheckinPage() {
             {/* Mobile card list */}
             <div className="checkin-hist-mobile">
               {history.length === 0 && (
-                <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>ไม่มีประวัติ</div>
+                <div style={{ padding: '28px 16px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
+                  ยังไม่มีประวัติการลงชื่อ
+                </div>
               )}
               {history.map(r => (
-                <div key={r.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div key={r.id} style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif" }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
                       {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: 'numeric', month: 'short' })}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
                       <LocBadge mode={r.location_mode} />
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                        {r.check_in_at  ? new Date(r.check_in_at).toLocaleTimeString('th-TH',  { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
                         {' → '}
                         {r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
                       </span>
                     </div>
                   </div>
                   <div style={{ flexShrink: 0 }}>
-                    {r.status === 'present' && <Chip variant="ok"   label="ปกติ" />}
+                    {r.status === 'present' && <Chip variant="ok"   label="วิทยาลัย" />}
                     {r.status === 'late'    && <Chip variant="warn" label="สาย" />}
                   </div>
                 </div>
@@ -540,6 +597,7 @@ export default function CheckinPage() {
             </div>
           </Panel>
         </div>
+
       </div>
     </AppShell>
   )
