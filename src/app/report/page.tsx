@@ -159,9 +159,12 @@ export default async function ReportPage({ searchParams }: Props) {
                   <td style={{ padding: '11px 14px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', width: 36 }}>{i + 1}</td>
                   <td style={{ padding: '11px 14px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'var(--accent-dim)', border: '1px solid rgba(61,90,241,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700, color: 'var(--accent)' }}>
-                        {s.user.full_name_th.slice(0, 2)}
-                      </div>
+                      {s.user.avatar_url
+                        ? <img src={s.user.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(61,90,241,.15)' }} />
+                        : <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'var(--accent-dim)', border: '1px solid rgba(61,90,241,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 700, color: 'var(--accent)' }}>
+                            {s.user.full_name_th.slice(0, 2)}
+                          </div>
+                      }
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>{s.user.full_name_th}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.user.department ?? '—'}</div>

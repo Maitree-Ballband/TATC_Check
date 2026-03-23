@@ -54,13 +54,6 @@ export default async function PresencePage({ searchParams }: Props) {
   const presentAll = counts.campus + counts.wfh + counts.late
   const attendRate = total ? Math.round(presentAll / total * 100) : 0
 
-  const seg = {
-    campus:      total ? counts.campus      / total * 100 : 0,
-    wfh:         total ? counts.wfh         / total * 100 : 0,
-    late:        total ? counts.late        / total * 100 : 0,
-    absent:      total ? counts.absent      / total * 100 : 0,
-    not_checked: total ? counts.not_checked / total * 100 : 0,
-  }
 
   const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('th-TH', {
     timeZone: 'Asia/Bangkok', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -156,7 +149,6 @@ export default async function PresencePage({ searchParams }: Props) {
           hardCutoffPassed={hardCutoffPassed}
           counts={counts}
           total={total}
-          seg={seg}
           notPresentCount={notPresentCount}
         />
       </div>

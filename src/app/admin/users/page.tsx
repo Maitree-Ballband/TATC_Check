@@ -279,14 +279,17 @@ export default function AdminUsersPage() {
                     <tr key={u.id} style={{ borderBottom: i < pendingUsers.length - 1 ? '1px solid rgba(217,119,6,.15)' : 'none' }}>
                       <td style={{ padding: '12px 14px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                            background: 'rgba(217,119,6,.15)', border: '1px solid rgba(217,119,6,.3)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 10.5, fontWeight: 700, color: 'var(--warn-text)',
-                          }}>
-                            {u.full_name_th.slice(0, 2)}
-                          </div>
+                          {u.avatar_url
+                          ? <img src={u.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(217,119,6,.3)' }} />
+                          : <div style={{
+                              width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                              background: 'rgba(217,119,6,.15)', border: '1px solid rgba(217,119,6,.3)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 10.5, fontWeight: 700, color: 'var(--warn-text)',
+                            }}>
+                              {u.full_name_th.slice(0, 2)}
+                            </div>
+                        }
                           <div>
                             <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)' }}>{u.full_name_th}</div>
                             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
@@ -547,16 +550,19 @@ export default function AdminUsersPage() {
                     {/* User */}
                     <td style={{ padding: '11px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                          background: u.role === 'admin' ? 'var(--blue-dim)' : u.role === 'executive' ? 'var(--warn-dim)' : 'var(--accent-dim)',
-                          border: `1.5px solid ${u.role === 'admin' ? 'rgba(37,99,235,.2)' : u.role === 'executive' ? 'rgba(217,119,6,.2)' : 'rgba(61,90,241,.15)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 11, fontWeight: 700,
-                          color: u.role === 'admin' ? 'var(--blue-text)' : u.role === 'executive' ? 'var(--warn-text)' : 'var(--accent)',
-                        }}>
-                          {u.full_name_th.slice(0, 2)}
-                        </div>
+                        {u.avatar_url
+                          ? <img src={u.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1.5px solid ${u.role === 'admin' ? 'rgba(37,99,235,.2)' : u.role === 'executive' ? 'rgba(217,119,6,.2)' : 'rgba(61,90,241,.15)'}` }} />
+                          : <div style={{
+                              width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                              background: u.role === 'admin' ? 'var(--blue-dim)' : u.role === 'executive' ? 'var(--warn-dim)' : 'var(--accent-dim)',
+                              border: `1.5px solid ${u.role === 'admin' ? 'rgba(37,99,235,.2)' : u.role === 'executive' ? 'rgba(217,119,6,.2)' : 'rgba(61,90,241,.15)'}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 11, fontWeight: 700,
+                              color: u.role === 'admin' ? 'var(--blue-text)' : u.role === 'executive' ? 'var(--warn-text)' : 'var(--accent)',
+                            }}>
+                              {u.full_name_th.slice(0, 2)}
+                            </div>
+                        }
                         <div>
                           <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>
                             {u.full_name_th}

@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
   const filterIn  = !!(timeInFrom  && timeInTo)
   const filterOut = !!(timeOutFrom && timeOutTo)
 
-  const users = await db.listActiveTeachersForExport()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const users = await db.listActiveTeachersForExport()
   const userMap = new Map<string, { national_id: string; name: string }>(
     users
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,7 +57,6 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const records = await db.getAttendanceForReport(users.map((u: any) => u.id), from, to)
 
-  const sep = fmt === 'csv' ? ',' : ' '
   const lines: string[] = []
 
   for (const rec of records) {
@@ -67,33 +66,50 @@ export async function GET(req: NextRequest) {
     const { national_id, name } = info
     const dateStr = toDDMMYYYY(rec.date)
 
-    // ── Check-in filter active ─────────────────────────────
-    if (filterIn && rec.check_in_at) {
+    if (filterIn && !filterOut) {
+      // ── Check-in filter only → show เข้า time ───────────────
+      if (!rec.check_in_at) continue
       const hhmmss = extractHHMMSS(rec.check_in_at)
-      const hhmm   = hhmmss.slice(0, 5)
-      if (hhmm >= timeInFrom && hhmm <= timeInTo) {
-        lines.push([national_id, dateStr, hhmmss, name].join(sep))
-      }
-    }
+      if (hhmmss.slice(0, 5) < timeInFrom || hhmmss.slice(0, 5) > timeInTo) continue
+      lines.push(`${national_id},${dateStr}, เข้า${hhmmss} ,${name}`)
 
-    // ── Check-out filter active ────────────────────────────
-    if (filterOut && rec.check_out_at) {
+    } else if (!filterIn && filterOut) {
+      // ── Check-out filter only → show ออก time ───────────────
+      if (!rec.check_out_at) continue
       const hhmmss = extractHHMMSS(rec.check_out_at)
-      const hhmm   = hhmmss.slice(0, 5)
-      if (hhmm >= timeOutFrom && hhmm <= timeOutTo) {
-        lines.push([national_id, dateStr, hhmmss, name].join(sep))
-      }
-    }
+      if (hhmmss.slice(0, 5) < timeOutFrom || hhmmss.slice(0, 5) > timeOutTo) continue
+      lines.push(`${national_id},${dateStr}, ออก${hhmmss} ,${name}`)
 
-    // ── No filter → export both check-in AND check-out ────
-    if (!filterIn && !filterOut) {
+    } else {
+      // ── No filter OR both filters → show เข้า + ออก ─────────
+      let inTime  = ''
+      let outTime = ''
+
       if (rec.check_in_at) {
         const hhmmss = extractHHMMSS(rec.check_in_at)
-        lines.push([national_id, dateStr, hhmmss, name].join(sep))
+        // If filterIn is active, check the time range; otherwise always include
+        if (!filterIn || (hhmmss.slice(0, 5) >= timeInFrom && hhmmss.slice(0, 5) <= timeInTo)) {
+          inTime = hhmmss
+        }
       }
+
       if (rec.check_out_at) {
         const hhmmss = extractHHMMSS(rec.check_out_at)
-        lines.push([national_id, dateStr, hhmmss, name].join(sep))
+        if (!filterOut || (hhmmss.slice(0, 5) >= timeOutFrom && hhmmss.slice(0, 5) <= timeOutTo)) {
+          outTime = hhmmss
+        }
+      }
+
+      // When both filters active, require both to match
+      if (filterIn && filterOut && (!inTime || !outTime)) continue
+      if (!inTime && !outTime) continue
+
+      if (inTime && outTime) {
+        lines.push(`${national_id},${dateStr}, เข้า${inTime}, ออก${outTime} ,${name}`)
+      } else if (inTime) {
+        lines.push(`${national_id},${dateStr}, เข้า${inTime} ,${name}`)
+      } else {
+        lines.push(`${national_id},${dateStr}, ออก${outTime} ,${name}`)
       }
     }
   }

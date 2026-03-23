@@ -56,14 +56,6 @@ export default async function DashboardPage() {
   // Combined "no check-in" for display
   const notPresentCount = hardCutoffPassed ? stats.absent : stats.not_checked
 
-  /* segment bar widths */
-  const seg = {
-    campus:      total ? (stats.campus      / total * 100) : 0,
-    wfh:         total ? (stats.wfh         / total * 100) : 0,
-    late:        total ? (stats.late        / total * 100) : 0,
-    absent:      total ? (stats.absent      / total * 100) : 0,
-    not_checked: total ? (stats.not_checked / total * 100) : 0,
-  }
 
   return (
     <AppShell>
@@ -145,43 +137,6 @@ export default async function DashboardPage() {
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: k.color, opacity: .7 }} />
           </div>
         ))}
-      </div>
-
-      {/* ── Segmented Attendance Bar ─────────────────────────────── */}
-      <div className="animate-fade-up-d1" style={{
-        background: 'var(--bg-surface)', border: '1px solid var(--line)',
-        borderRadius: 12, padding: '18px 20px', marginBottom: 16,
-        boxShadow: '0 1px 4px rgba(30,36,51,.05)',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>สัดส่วนการเข้างานวันนี้</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>ครูทั้งหมด {total} คน</div>
-        </div>
-
-        {/* Segmented bar */}
-        <div style={{ height: 10, borderRadius: 99, overflow: 'hidden', display: 'flex', marginBottom: 14, background: 'var(--line)' }}>
-          {seg.campus      > 0 && <div style={{ width: `${seg.campus}%`,      background: 'var(--ok)',      transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.wfh         > 0 && <div style={{ width: `${seg.wfh}%`,         background: 'var(--blue)',    transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.late        > 0 && <div style={{ width: `${seg.late}%`,        background: 'var(--warn)',    transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.absent      > 0 && <div style={{ width: `${seg.absent}%`,      background: 'var(--danger)',  transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.not_checked > 0 && <div style={{ width: `${seg.not_checked}%`, background: 'var(--line-mid)',transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-        </div>
-
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          {[
-            { label: 'วิทยาลัย',                                       count: stats.campus,      color: 'var(--ok)' },
-            { label: 'WFH',                                            count: stats.wfh,         color: 'var(--blue)' },
-            { label: 'มาสาย',                                          count: stats.late,        color: 'var(--warn)' },
-            { label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',            count: notPresentCount,   color: hardCutoffPassed ? 'var(--danger)' : 'var(--line-mid)' },
-          ].map(l => (
-            <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{l.label}</span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{l.count}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* ── Table + Log ──────────────────────────────────────────── */}

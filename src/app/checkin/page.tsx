@@ -174,8 +174,9 @@ export default function CheckinPage() {
     const res = await fetch('/api/attendance/checkout', { method: 'POST' })
     setLoading(false)
     if (res.ok) {
-      const time = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
-      showToast(`ลงชื่อออกงานสำเร็จ · ${time} น.`, 'ok')
+      const time  = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
+      const place = today.record?.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย'
+      showToast(`ลงชื่อออกงานสำเร็จ — ${place} · ${time} น.`, 'ok')
       fetchToday()
     }
   }
@@ -207,13 +208,13 @@ export default function CheckinPage() {
     }
     if (locMode === 'campus') return {
       bg: 'var(--ok-dim)', border: '1px solid rgba(95,184,130,.2)', dot: 'var(--ok)',
-      title: 'อยู่ในพื้นที่วิทยาลัย',
-      sub: distance !== null ? `ห่าง ${Math.round(distance)} ม. · เกณฑ์ ≤ ${RADIUS_M} ม.` : '',
+      title: 'แสกน: วิทยาลัย',
+      sub: distance !== null ? `ตรวจพบว่าอยู่ในพื้นที่ · ห่าง ${Math.round(distance)} ม. จากจุดศูนย์กลาง` : 'ตรวจพบว่าอยู่ในพื้นที่วิทยาลัย',
     }
     return {
       bg: 'var(--blue-dim)', border: '1px solid rgba(91,142,240,.2)', dot: 'var(--blue)',
-      title: distance !== null ? `อยู่นอกพื้นที่ — ห่าง ${Math.round(distance)} ม.` : 'อยู่นอกพื้นที่วิทยาลัย',
-      sub: `จะลงชื่อในโหมด WFH (เกณฑ์วิทยาลัย ≤ ${RADIUS_M} ม.)`,
+      title: 'แสกน: Work From Home (WFH)',
+      sub: distance !== null ? `อยู่นอกพื้นที่ ห่าง ${Math.round(distance)} ม. · เกณฑ์วิทยาลัย ≤ ${RADIUS_M} ม.` : `อยู่นอกพื้นที่วิทยาลัย (เกณฑ์ ≤ ${RADIUS_M} ม.)`,
     }
   })()
 
