@@ -1,4 +1,5 @@
 'use client'
+import type { CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns'
 
@@ -20,7 +21,7 @@ export function MonthNav({ from }: Props) {
     timeZone: 'Asia/Bangkok', month: 'long', year: 'numeric',
   })
 
-  const btnS: React.CSSProperties = {
+  const btnS: CSSProperties = {
     padding: '7px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600,
     background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
     color: 'var(--text-secondary)', cursor: 'pointer',

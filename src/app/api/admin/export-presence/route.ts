@@ -87,10 +87,10 @@ export async function GET(req: NextRequest) {
   titleRow.alignment = { vertical: 'middle', horizontal: 'left' }
   titleRow.height = 22
 
-  const buffer = await wb.xlsx.writeBuffer()
+  const buffer    = await wb.xlsx.writeBuffer()
   const dateLabel = date.replace(/-/g, '')
 
-  return new NextResponse(buffer as Buffer, {
+  return new NextResponse(buffer, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="presence_${dateLabel}.xlsx"`,
