@@ -24,7 +24,7 @@ const NAV_ADMIN = [
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
   const pathname = usePathname()
   const router   = useRouter()
   const role     = session?.user?.role
@@ -34,8 +34,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
-    if (session?.user?.isPending) router.replace('/auth/pending')
-  }, [session, router])
+    if (!session?.user?.isPending) return
+    // Re-fetch session from DB before redirecting — avoids race condition after
+    // user completes registration (isPending cleared) and navigates here.
+    update().then(fresh => {
+      if (fresh?.user?.isPending) router.replace('/auth/pending')
+    })
+  }, [session?.user?.isPending]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close sidebar on route change
   useEffect(() => { setSidebarOpen(false) }, [pathname])
@@ -159,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <span className="appshell-topbar-sep" style={{ width: 1, height: 18, background: 'var(--line-mid)' }} />
           <span className="appshell-topbar-date" style={{ fontSize: 13.5, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-            {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </span>
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
