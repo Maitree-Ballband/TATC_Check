@@ -127,28 +127,30 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
       </div>
 
       {/* ── Search box ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: 10, position: 'relative', maxWidth: 280 }}>
-        <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }}
-          width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <div style={{ marginBottom: 10, position: 'relative', maxWidth: 340 }}>
+        <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }}
+          width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
         </svg>
         <input
           type="text"
-          placeholder="ค้นหาชื่อ / แผนก…"
+          placeholder="ค้นหาชื่อ หรือ แผนก…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{
-            width: '100%', padding: '7px 28px 7px 28px', borderRadius: 7, fontSize: 13,
-            background: 'var(--bg-surface)', border: '1px solid var(--line-mid)',
+            width: '100%', padding: '9px 34px 9px 34px', borderRadius: 8, fontSize: 13.5,
+            background: 'var(--bg-surface)', border: `1.5px solid ${search ? 'var(--accent)' : 'var(--line)'}`,
             color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
             outline: 'none', boxSizing: 'border-box',
+            boxShadow: search ? '0 0 0 3px rgba(61,90,241,.1)' : '0 1px 3px rgba(0,0,0,.06)',
           }}
         />
         {search && (
           <button onClick={() => setSearch('')} style={{
-            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none',
-            cursor: 'pointer', padding: '2px 4px', lineHeight: 1,
+            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+            fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-active)',
+            border: '1px solid var(--line)', borderRadius: 4,
+            cursor: 'pointer', padding: '1px 5px', lineHeight: 1.4,
           }}>✕</button>
         )}
       </div>
@@ -237,8 +239,16 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
           background: 'var(--bg-raised)',
           borderBottom: '1px solid var(--line)',
         }}>
-          {['#', 'ชื่อ-สกุล / แผนก', 'เข้างาน', 'สถานที่เข้า', 'ออกงาน', 'สถานที่ออก', 'สถานะ'].map(h => (
-            <div key={h} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>
+          {([
+            { h: '#',             center: true  },
+            { h: 'ชื่อ-สกุล / แผนก', center: false },
+            { h: 'เข้างาน',       center: true  },
+            { h: 'สถานที่เข้า',   center: true  },
+            { h: 'ออกงาน',        center: true  },
+            { h: 'สถานที่ออก',    center: true  },
+            { h: 'สถานะ',         center: true  },
+          ]).map(({ h, center }) => (
+            <div key={h} style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', textAlign: center ? 'center' : 'left' }}>
               {h}
             </div>
           ))}
@@ -269,7 +279,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
               }}
             >
               {/* # */}
-              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 500 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 500, textAlign: 'center' }}>
                 {idx + 1}
               </div>
 
@@ -302,23 +312,23 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
               </div>
 
               {/* Check-in time */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkIn ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkIn ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
                 {row.checkIn ?? '—'}
               </div>
 
               {/* Location in */}
-              <div><LocPill mode={locInMode} /></div>
+              <div style={{ textAlign: 'center' }}><LocPill mode={locInMode} /></div>
 
               {/* Check-out time */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
                 {row.checkOut ?? '—'}
               </div>
 
               {/* Location out */}
-              <div><LocPill mode={locOutMode} /></div>
+              <div style={{ textAlign: 'center' }}><LocPill mode={locOutMode} /></div>
 
               {/* Status chip */}
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '3px 9px', borderRadius: 99,

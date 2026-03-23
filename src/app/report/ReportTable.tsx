@@ -45,29 +45,30 @@ export function ReportTable({ summaries, daysInRange, rangeLabel, from, to }: Pr
         </div>
 
         {/* Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 180, maxWidth: 280 }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }}
-              width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="ค้นหาชื่อ / แผนก…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '100%', padding: '6px 10px 6px 28px', borderRadius: 7, fontSize: 13,
-                background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
-                color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
-                outline: 'none', boxSizing: 'border-box',
-              }}
-            />
-          </div>
+        <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 320 }}>
+          <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }}
+            width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อ หรือ แผนก…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 34px 8px 34px', borderRadius: 8, fontSize: 13,
+              background: 'var(--bg-surface)', border: `1.5px solid ${search ? 'var(--accent)' : 'var(--line)'}`,
+              color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
+              outline: 'none', boxSizing: 'border-box',
+              boxShadow: search ? '0 0 0 3px rgba(61,90,241,.1)' : '0 1px 3px rgba(0,0,0,.06)',
+            }}
+          />
           {search && (
             <button onClick={() => setSearch('')} style={{
-              fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none',
-              cursor: 'pointer', padding: '4px 6px', borderRadius: 4,
+              position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-active)',
+              border: '1px solid var(--line)', borderRadius: 4,
+              cursor: 'pointer', padding: '1px 5px', lineHeight: 1.4,
             }}>✕</button>
           )}
         </div>
