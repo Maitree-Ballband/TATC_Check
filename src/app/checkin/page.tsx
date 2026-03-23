@@ -7,7 +7,6 @@ import type { TodayStatus, AttendanceRecord } from '@/types'
 
 const CUTOFF         = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF           ?? '08:00'
 const CHECKOUT_AFTER = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'
-const ABSENT_CUTOFF  = process.env.NEXT_PUBLIC_ABSENT_CUTOFF            ?? '12:00'
 const SCHOOL_LAT     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT    ?? '13.736717')
 const SCHOOL_LNG     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG    ?? '100.523186')
 const RADIUS_M       = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '500')
@@ -39,8 +38,8 @@ function isAfterCheckoutTime() {
   return bkkMinutes(new Date()) >= h * 60 + m
 }
 
-function isAfterNoon() {
-  const [h, m] = ABSENT_CUTOFF.split(':').map(Number)
+function isAfterCutoff() {
+  const [h, m] = CUTOFF.split(':').map(Number)
   return bkkMinutes(new Date()) > h * 60 + m
 }
 
@@ -151,8 +150,8 @@ export default function CheckinPage() {
     if (today?.checked_in) return
     if (isAbsent) { showToast(`พ้นเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
     if (gpsState === 'loading') { showToast('กำลังตรวจสอบตำแหน่ง กรุณารอสักครู่', 'warn'); return }
-    // Note: gpsState==='error' is allowed — locMode will be 'wfh' as fallback
-    if (isNoonPassed) { setLateReason(''); setShowReasonModal(true); return }
+    if (gpsState === 'error')   { showToast('กรุณาแก้ไข GPS แล้วกด "ลองใหม่" ก่อนเช็คอิน', 'danger'); return }
+    if (isLate) { setLateReason(''); setShowReasonModal(true); return }
     doCheckin()
   }
 
@@ -168,8 +167,8 @@ export default function CheckinPage() {
     }
   }
 
-  const isAbsent    = !today?.checked_in && isAfterCheckoutTime()
-  const isNoonPassed = !today?.checked_in && isAfterNoon() && !isAfterCheckoutTime()
+  const isAbsent = !today?.checked_in && isAfterCheckoutTime()
+  const isLate   = !today?.checked_in && isAfterCutoff() && !isAfterCheckoutTime()
 
   const statusChip = () => {
     if (isAbsent)                               return <Chip variant="danger"  label="ขาด" />
@@ -208,16 +207,18 @@ export default function CheckinPage() {
   })()
 
   // Button appearance
-  const checkinBtnDisabled = loading || !!today?.checked_in || isAbsent || gpsState === 'loading'
-  const checkinBtnBg = today?.checked_in ? 'var(--bg-active)'
-    : isAbsent   ? 'var(--danger-dim)'
-    : isNoonPassed ? 'var(--warn-dim)'
-    : gpsState === 'loading' ? 'var(--bg-raised)'
+  const checkinBtnDisabled = loading || !!today?.checked_in || isAbsent || gpsState === 'loading' || gpsState === 'error'
+  const checkinBtnBg = today?.checked_in    ? 'var(--bg-active)'
+    : isAbsent                              ? 'var(--danger-dim)'
+    : gpsState === 'error'                  ? 'var(--danger-dim)'
+    : isLate                                ? 'var(--warn-dim)'
+    : gpsState === 'loading'                ? 'var(--bg-raised)'
     : 'var(--text-primary)'
   const checkinBtnColor = today?.checked_in ? 'var(--text-muted)'
-    : isAbsent   ? 'var(--danger-text)'
-    : isNoonPassed ? 'var(--warn-text)'
-    : gpsState === 'loading' ? 'var(--text-dim)'
+    : isAbsent                              ? 'var(--danger-text)'
+    : gpsState === 'error'                  ? 'var(--danger-text)'
+    : isLate                                ? 'var(--warn-text)'
+    : gpsState === 'loading'                ? 'var(--text-dim)'
     : 'var(--bg-base)'
 
   return (
@@ -239,10 +240,10 @@ export default function CheckinPage() {
           <div style={{ background: 'var(--bg-surface)', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 480, boxShadow: '0 -8px 40px rgba(0,0,0,.2)' }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--line-mid)', margin: '0 auto 20px' }} />
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', marginBottom: 6 }}>
-              ลงชื่อเข้าเกินเที่ยง
+              ลงชื่อเข้าเกินเวลา
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginBottom: 16 }}>
-              คุณลงชื่อหลัง {ABSENT_CUTOFF} น. สถานะจะถูกบันทึกเป็น{' '}
+              คุณลงชื่อหลัง {CUTOFF} น. สถานะจะถูกบันทึกเป็น{' '}
               <strong style={{ color: 'var(--warn-text)' }}>สาย</strong><br/>
               กรุณาระบุเหตุผล <strong>อย่างน้อย 10 ตัวอักษร</strong> เพื่อดำเนินการต่อ
             </div>
@@ -312,9 +313,9 @@ export default function CheckinPage() {
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               {new Date().toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
-            {isNoonPassed && (
+            {isLate && (
               <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.25)', borderRadius: 6, padding: '4px 10px', fontSize: 12, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
-                ⚠ เกินเที่ยงแล้ว — การลงชื่อต้องระบุเหตุผล
+                ⚠ เกิน {CUTOFF} น. แล้ว — การลงชื่อต้องระบุเหตุผล
               </div>
             )}
           </div>
@@ -332,21 +333,20 @@ export default function CheckinPage() {
                     {gpsInfo.sub}
                   </div>
 
-                  {/* GPS error: retry + WFH fallback notice + browser hint */}
+                  {/* GPS error: must retry — no WFH fallback */}
                   {gpsInfo.isError && (
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                         <button
                           onClick={detectGps}
-                          style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--warn-text)', background: 'transparent', color: 'var(--warn-text)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                          style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--danger-text)', background: 'var(--danger-dim)', color: 'var(--danger-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                         >
                           ↺ ลองใหม่
                         </button>
-                        <span style={{ fontSize: 12, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
-                          จะเช็คอินในโหมด <strong>WFH</strong> แทน
+                        <span style={{ fontSize: 12, color: 'var(--danger-text)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
+                          ต้องแก้ไข GPS ก่อนจึงเช็คอินได้
                         </span>
                       </div>
-                      {/* Always recommend Chrome/Safari for GPS issues */}
                       {gpsErrCode !== 0 && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ fontSize: 13 }}>💡</span>
@@ -371,9 +371,12 @@ export default function CheckinPage() {
           {/* Profile row */}
           <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
-                {session?.user?.nameTh?.slice(0, 2) ?? '??'}
-              </div>
+              {session?.user?.image
+                ? <img src={session.user.image} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--line)' }} />
+                : <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                    {session?.user?.nameTh?.slice(0, 2) ?? '??'}
+                  </div>
+              }
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.nameTh}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{session?.user?.dept ?? 'ไม่ระบุแผนก'}</div>
@@ -425,14 +428,14 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{isAbsent ? 'ขาด' : isNoonPassed ? 'ลงชื่อสาย' : 'ลงชื่อเข้า'}</span>
+                <span>{isAbsent ? 'ขาด' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้า'}</span>
                 <span style={{ fontSize: 11, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
                     : isAbsent      ? `พ้น ${CHECKOUT_AFTER} น.`
-                    : isNoonPassed  ? 'ต้องระบุเหตุผล'
+                    : isLate  ? 'ต้องระบุเหตุผล'
                     : gpsState === 'loading' ? 'กำลังตรวจสอบ...'
-                    : gpsState === 'error'   ? 'WFH (ไม่มี GPS)'
+                    : gpsState === 'error'   ? 'ต้องแก้ไข GPS ก่อน'
                     : locMode === 'campus'   ? 'วิทยาลัย'
                     : 'WFH'}
                 </span>
@@ -464,7 +467,7 @@ export default function CheckinPage() {
             </div>
 
             <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'var(--font-mono)', textAlign: 'center', lineHeight: 1.7 }}>
-              หลัง {CUTOFF} น. = สาย · หลัง {ABSENT_CUTOFF} น. ต้องระบุเหตุผล · ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
+              หลัง {CUTOFF} น. = สาย (ต้องระบุเหตุผล) · ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
             </div>
           </div>
         </div>

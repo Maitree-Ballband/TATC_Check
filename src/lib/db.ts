@@ -60,7 +60,6 @@ export async function listActiveTeachers() {
     .from('users')
     .select('id, full_name_th, department, role, avatar_url')
     .eq('is_active', true)
-    .eq('role', 'teacher')
     .order('full_name_th')
   if (error) throw new Error(`listActiveTeachers: ${error.message}`)
   return data ?? []
@@ -148,7 +147,6 @@ export async function listActiveTeachersForExport(dept?: string | null) {
     .from('users')
     .select('id, full_name_th, national_id, employee_id, department')
     .eq('is_active', true)
-    .eq('role', 'teacher')
     .order('full_name_th')
   if (dept) q = q.eq('department', dept)
   const { data, error } = await q

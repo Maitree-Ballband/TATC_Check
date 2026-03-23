@@ -71,6 +71,7 @@ export const authOptions: NextAuthOptions = {
       session.user.nameTh    = token.nameTh as string
       session.user.dept      = token.dept as string | null
       session.user.isPending = (token.isPending as boolean) ?? false
+      session.user.image     = (token.picture as string | null) ?? null
       return session
     },
   },

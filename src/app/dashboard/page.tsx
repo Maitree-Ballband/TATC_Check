@@ -114,9 +114,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── KPI Cards ───────────────────────────────────────────── */}
-      <div className="animate-fade-up-d1" style={{
-        display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16,
-      }}>
+      <div className="animate-fade-up-d1 dash-kpi-grid" style={{ marginBottom: 16 }}>
         {[
           { label: 'มา (วิทยาลัย)', value: stats.campus,      sub: `${total ? Math.round(stats.campus/total*100) : 0}% ของทั้งหมด`, color: 'var(--ok)',      dimColor: 'var(--ok-dim)',      textColor: 'var(--ok-text)' },
           { label: 'Work From Home', value: stats.wfh,         sub: `${total ? Math.round(stats.wfh/total*100)    : 0}% ของทั้งหมด`, color: 'var(--blue)',    dimColor: 'var(--blue-dim)',    textColor: 'var(--blue-text)' },
@@ -187,9 +185,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Table + Log ──────────────────────────────────────────── */}
-      <div className="animate-fade-up-d2" style={{
-        display: 'grid', gridTemplateColumns: '1fr 340px', gap: 14, alignItems: 'start',
-      }}>
+      <div className="animate-fade-up-d2 dash-layout-grid">
 
         {/* Teacher Table */}
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 1px 4px rgba(30,36,51,.05)', overflow: 'hidden' }}>

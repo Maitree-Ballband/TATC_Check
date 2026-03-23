@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { checkInSchema, isWithinGeofence, isPastAbsentCutoff, isPastHardAbsentCutoff, resolveStatus, todayDate } from '@/lib/attendance'
+import { checkInSchema, isWithinGeofence, isPastHardAbsentCutoff, resolveStatus, todayDate } from '@/lib/attendance'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -36,13 +36,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'absent' }, { status: 403 })
   }
 
-  // Past noon → reason is required, minimum 10 characters
-  if (isPastAbsentCutoff() && (!reason?.trim() || reason.trim().length < 10)) {
+  const now    = new Date()
+  const status = resolveStatus(now)   // 'present' | 'late' — 'late' after 08:00
+
+  // Late (after 08:00) → reason is required, minimum 10 characters
+  if (status === 'late' && (!reason?.trim() || reason.trim().length < 10)) {
     return NextResponse.json({ error: 'reason_required' }, { status: 422 })
   }
-
-  const now    = new Date()
-  const status = resolveStatus(now)   // 'present' | 'late' — always 'late' after 08:00
 
   try {
     const record = await db.upsertCheckIn({
