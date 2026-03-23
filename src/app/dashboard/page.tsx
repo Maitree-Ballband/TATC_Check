@@ -46,7 +46,7 @@ export default async function DashboardPage() {
     .slice(0, 8)
 
   const dateLabel = new Date().toLocaleDateString('th-TH', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Bangkok', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
   /* segment bar widths */
@@ -234,13 +234,13 @@ export default async function DashboardPage() {
                     {/* Check-in */}
                     <td style={{ padding: '10px 14px', fontSize: 12.5, color: row.record?.check_in_at ? 'var(--text-secondary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
                       {row.record?.check_in_at
-                        ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+                        ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                         : '—'}
                     </td>
                     {/* Check-out */}
                     <td style={{ padding: '10px 14px', fontSize: 12.5, color: row.record?.check_out_at ? 'var(--text-secondary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
                       {row.record?.check_out_at
-                        ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+                        ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                         : '—'}
                     </td>
                     {/* Status */}
@@ -283,7 +283,7 @@ export default async function DashboardPage() {
               const isWfhLate = isWfh && isLate
               const dotC   = isWfhLate ? 'var(--warn)' : isWfh ? 'var(--blue)' : isLate ? 'var(--warn)' : 'var(--ok)'
               const dotBg  = isWfhLate ? 'var(--warn-dim)' : isWfh ? 'var(--blue-dim)' : isLate ? 'var(--warn-dim)' : 'var(--ok-dim)'
-              const timeStr = new Date(r.check_in_at!).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+              const timeStr = new Date(r.check_in_at!).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
 
               return (
                 <div key={r.id} style={{ display: 'flex', gap: 12, padding: '10px 20px' }}>

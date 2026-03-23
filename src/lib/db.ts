@@ -128,10 +128,19 @@ export async function updatePendingUserProfile(
 ) {
   const { error } = await client()
     .from('users')
-    .update({ full_name_th, national_id })
+    .update({ full_name_th, national_id, is_pending: false, is_active: true })
     .eq('id', id)
     .eq('is_pending', true)
   if (error) throw new Error(error.message)
+}
+
+export async function findUserAuthById(id: string) {
+  const { data } = await client()
+    .from('users')
+    .select('id, role, full_name_th, department, is_pending')
+    .eq('id', id)
+    .single()
+  return data as Pick<User, 'id' | 'role' | 'full_name_th' | 'department' | 'is_pending'> | null
 }
 
 export async function listActiveTeachersForExport(dept?: string | null) {
@@ -158,6 +167,16 @@ export async function checkWhitelist(nationalId: string, fullName: string): Prom
     .eq('full_name_th', fullName)
     .maybeSingle()
   return data !== null
+}
+
+/** ค้นหาชื่อใน whitelist จากเลขบัตรประชาชน — คืน full_name_th หรือ null */
+export async function lookupNameByNationalId(nationalId: string): Promise<string | null> {
+  const { data } = await client()
+    .from('staff_whitelist')
+    .select('full_name_th')
+    .eq('national_id', nationalId)
+    .maybeSingle()
+  return data?.full_name_th ?? null
 }
 
 /** ค้นหาชื่อใน whitelist ที่มี q เป็นส่วนหนึ่ง (ส่งคืนแค่ชื่อ ไม่มีเลขบัตร) */

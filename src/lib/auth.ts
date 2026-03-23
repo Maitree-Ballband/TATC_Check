@@ -52,6 +52,15 @@ export const authOptions: NextAuthOptions = {
           token.dept      = data.department
           token.isPending = data.is_pending ?? false
         }
+      } else if (token.isPending && token.userId) {
+        // Re-check DB so the token self-heals after auto-activation
+        const data = await db.findUserAuthById(token.userId as string)
+        if (data && !data.is_pending) {
+          token.isPending = false
+          token.role      = data.role
+          token.nameTh    = data.full_name_th
+          token.dept      = data.department
+        }
       }
       return token
     },

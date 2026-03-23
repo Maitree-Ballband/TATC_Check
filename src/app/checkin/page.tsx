@@ -11,6 +11,20 @@ const ABSENT_CUTOFF  = process.env.NEXT_PUBLIC_ABSENT_CUTOFF            ?? '12:0
 const SCHOOL_LAT     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LAT    ?? '13.736717')
 const SCHOOL_LNG     = parseFloat(process.env.NEXT_PUBLIC_SCHOOL_LNG    ?? '100.523186')
 const RADIUS_M       = parseFloat(process.env.NEXT_PUBLIC_GEOFENCE_RADIUS ?? '500')
+const SCHOOL_TZ      = process.env.NEXT_PUBLIC_SCHOOL_TZ                ?? 'Asia/Bangkok'
+
+function bkkMinutes(date: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date)
+  const h = parseInt(parts.find(p => p.type === 'hour')!.value) % 24
+  const m = parseInt(parts.find(p => p.type === 'minute')!.value)
+  return h * 60 + m
+}
+
+function bkkDateStr(date: Date): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: SCHOOL_TZ }).format(date)
+}
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000
@@ -22,14 +36,12 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 function isAfterCheckoutTime() {
   const [h, m] = CHECKOUT_AFTER.split(':').map(Number)
-  const now = new Date()
-  return now.getHours() * 60 + now.getMinutes() >= h * 60 + m
+  return bkkMinutes(new Date()) >= h * 60 + m
 }
 
 function isPastAbsentCutoff() {
   const [h, m] = ABSENT_CUTOFF.split(':').map(Number)
-  const now = new Date()
-  return now.getHours() * 60 + now.getMinutes() > h * 60 + m
+  return bkkMinutes(new Date()) > h * 60 + m
 }
 
 export default function CheckinPage() {
@@ -46,7 +58,7 @@ export default function CheckinPage() {
 
   // Live clock
   useEffect(() => {
-    const tick = () => setClock(new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }))
+    const tick = () => setClock(new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }))
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
@@ -75,8 +87,8 @@ export default function CheckinPage() {
   }, [])
 
   const fetchHistory = useCallback(async () => {
-    const to   = new Date().toISOString().slice(0, 10)
-    const from = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+    const to   = bkkDateStr(new Date())
+    const from = bkkDateStr(new Date(Date.now() - 7 * 86400000))
     const res  = await fetch(`/api/attendance/history?from=${from}&to=${to}`)
     if (res.ok) { const d = await res.json(); setHistory(d.records ?? []) }
   }, [])
@@ -103,7 +115,7 @@ export default function CheckinPage() {
 
     if (res.ok) {
       const label = autoMode === 'campus' ? 'วิทยาลัย' : 'WFH'
-      showToast(`เช็คอินสำเร็จ — ${label} · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
+      showToast(`เช็คอินสำเร็จ — ${label} · ${new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
       fetchToday(); fetchHistory()
     } else if (data.error === 'already_checked_in') {
       showToast('เช็คอินแล้วในวันนี้', 'warn')
@@ -119,7 +131,7 @@ export default function CheckinPage() {
     const res = await fetch('/api/attendance/checkout', { method: 'POST' })
     setLoading(false)
     if (res.ok) {
-      showToast(`เช็คเอาท์สำเร็จ · ${new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
+      showToast(`เช็คเอาท์สำเร็จ · ${new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })} น.`, 'ok')
       fetchToday()
     }
   }
@@ -169,7 +181,7 @@ export default function CheckinPage() {
               {clock}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-              {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {new Date().toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
           </div>
 
@@ -211,8 +223,8 @@ export default function CheckinPage() {
             {today?.checked_in && today.record && (
               <div style={{ background: 'var(--bg-raised)', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 14px', marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 {[
-                  { label: 'ลงชื่อเข้า', val: today.record.check_in_at ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
-                  { label: 'ลงชื่อออก', val: today.record.check_out_at ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
+                  { label: 'ลงชื่อเข้า', val: today.record.check_in_at ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
+                  { label: 'ลงชื่อออก', val: today.record.check_out_at ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
                   { label: 'สถานที่', val: today.record.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย' },
                 ].map(f => (
                   <div key={f.label}>
@@ -259,7 +271,7 @@ export default function CheckinPage() {
                 <span>{isAbsent ? 'ขาด' : 'ลงชื่อเข้า'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.75 }}>
                   {today?.checked_in && today.record?.check_in_at
-                    ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
+                    ? new Date(today.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
                     : isAbsent
                     ? `พ้นเวลา ${ABSENT_CUTOFF} น.`
                     : gpsState === 'loading' ? 'กำลังตรวจสอบ...'
@@ -297,7 +309,7 @@ export default function CheckinPage() {
                 <span>ลงชื่อออก</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.75 }}>
                   {today?.checked_out && today.record?.check_out_at
-                    ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
+                    ? new Date(today.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.'
                     : 'หลัง ' + CHECKOUT_AFTER + ' น.'}
                 </span>
               </button>
@@ -326,14 +338,14 @@ export default function CheckinPage() {
                 {history.map(r => (
                   <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
                     <td style={{ padding: '11px 14px', fontSize: 14, color: 'var(--text-secondary)', fontFamily: "'Sarabun', sans-serif" }}>
-                      {new Date(r.date).toLocaleDateString('th-TH', { weekday: 'short', day: '2-digit', month: 'short' })}
+                      {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: '2-digit', month: 'short' })}
                     </td>
                     <td style={{ padding: '11px 14px' }}><LocBadge mode={r.location_mode} /></td>
                     <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: "'Sarabun', sans-serif", color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                      {r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
+                      {r.check_in_at ? new Date(r.check_in_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
                     </td>
                     <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: "'Sarabun', sans-serif", color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                      {r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
+                      {r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) + ' น.' : '—'}
                     </td>
                     <td style={{ padding: '11px 14px' }}>
                       {r.status === 'present' && <Chip variant="ok"   label="ปกติ" />}

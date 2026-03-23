@@ -43,7 +43,7 @@ export default async function PresencePage() {
   const attendRate = total ? Math.round(presentAll / total * 100) : 0
 
   const dateLabel = new Date().toLocaleDateString('th-TH', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Bangkok', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
   /* ── Status groups (priority order) ──────────────────────── */
@@ -218,10 +218,10 @@ export default async function PresencePage() {
             }}>
               {group.rows.map(row => {
                 const checkIn  = row.record?.check_in_at
-                  ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+                  ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                   : null
                 const checkOut = row.record?.check_out_at
-                  ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false })
+                  ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
                   : null
 
                 return (

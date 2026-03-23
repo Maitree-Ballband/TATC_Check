@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
 import { format, startOfMonth, endOfMonth, differenceInCalendarDays, parseISO } from 'date-fns'
+import { todayDate } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { Chip } from '@/components/ui'
 import { ReportControls } from './ReportControls'
@@ -18,7 +19,7 @@ export default async function ReportPage({ searchParams }: Props) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'admin') redirect('/checkin')
 
-  const now = new Date()
+  const now = parseISO(todayDate())   // Bangkok's today, timezone-safe
 
   // Resolve date range — default to current month
   const from = searchParams.from ?? format(startOfMonth(now), 'yyyy-MM-dd')
@@ -29,8 +30,8 @@ export default async function ReportPage({ searchParams }: Props) {
   const daysInRange = differenceInCalendarDays(toDate, fromDate) + 1
 
   const rangeLabel = from === to
-    ? fromDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
-    : `${fromDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })} – ${toDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}`
+    ? fromDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'long', year: 'numeric' })
+    : `${fromDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: 'numeric' })} – ${toDate.toLocaleDateString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', year: 'numeric' })}`
 
   const users   = await db.listActiveTeachers()
   const records = await db.getAttendanceForReport(users.map(u => u.id), from, to)
