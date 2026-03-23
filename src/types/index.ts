@@ -34,6 +34,7 @@ export interface AttendanceRecord {
   check_in_lng: number | null         // null for WFH records
   status: StoredAttendanceStatus      // only 'present' | 'late' — never 'absent' in DB
   selfie_url: string | null
+  late_reason: string | null          // set when checked in after noon cutoff
   created_at: string
   updated_at: string                  // auto-updated by DB trigger on checkout
 }

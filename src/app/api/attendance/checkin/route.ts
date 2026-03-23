@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { checkInSchema, isWithinGeofence, isPastAbsentCutoff, resolveStatus, todayDate } from '@/lib/attendance'
+import { checkInSchema, isWithinGeofence, isPastAbsentCutoff, isPastHardAbsentCutoff, resolveStatus, todayDate } from '@/lib/attendance'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
-  const { location_mode, lat, lng } = parsed.data
+  const { location_mode, lat, lng, reason } = parsed.data
 
   if (location_mode === 'campus' && lat != null && lng != null) {
     if (!isWithinGeofence(lat, lng)) {
@@ -31,13 +31,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'already_checked_in', record: existing }, { status: 409 })
   }
 
-  // Past noon without a check-in → absent, block further check-in
-  if (isPastAbsentCutoff()) {
+  // Past 16:30 without a check-in → block (absent)
+  if (isPastHardAbsentCutoff()) {
     return NextResponse.json({ error: 'absent' }, { status: 403 })
   }
 
+  // Past noon → reason is required, minimum 10 characters
+  if (isPastAbsentCutoff() && (!reason?.trim() || reason.trim().length < 10)) {
+    return NextResponse.json({ error: 'reason_required' }, { status: 422 })
+  }
+
   const now    = new Date()
-  const status = resolveStatus(now)
+  const status = resolveStatus(now)   // 'present' | 'late' — always 'late' after 08:00
 
   try {
     const record = await db.upsertCheckIn({
@@ -48,6 +53,7 @@ export async function POST(req: NextRequest) {
       check_in_lat:  lat ?? null,
       check_in_lng:  lng ?? null,
       status,
+      late_reason:   reason?.trim() || null,
     })
     return NextResponse.json({ record, status, checked_in_at: now.toISOString() })
   } catch (err) {

@@ -40,11 +40,16 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
   status        text        NOT NULL DEFAULT 'present'
                             CHECK (status IN ('present', 'late')),
   selfie_url    text,
+  -- Reason required when checking in after ABSENT_CUTOFF (default 12:00)
+  late_reason   text,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),  -- refreshed by trigger on every UPDATE
 
   UNIQUE (user_id, date)   -- prevents duplicate check-ins; required for ON CONFLICT upserts
 );
+
+-- Migration (run once on existing databases):
+-- ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_reason text;
 
 -- Auto-refresh updated_at whenever a row is updated (e.g. check-out written)
 CREATE OR REPLACE FUNCTION public.set_updated_at()

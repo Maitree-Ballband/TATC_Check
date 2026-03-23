@@ -190,3 +190,25 @@ input:focus, select:focus, textarea:focus {
   /* Logout: icon only on very small screens */
   .appshell-logout-text { display: none; }
 }
+
+/* ── Checkin page responsive ─────────────────────────────────── */
+.checkin-wrap { max-width: 440px; margin: 0 auto; }
+
+/* Desktop: show table, hide cards */
+.checkin-hist-desktop { display: block; }
+.checkin-hist-mobile  { display: none; }
+
+/* Mobile clock slightly smaller */
+@media (max-width: 480px) {
+  .checkin-clock { font-size: 38px !important; }
+}
+
+/* Mobile: hide table, show cards; full-width layout */
+@media (max-width: 600px) {
+  .checkin-wrap  { max-width: 100%; }
+  .checkin-hist-desktop { display: none; }
+  .checkin-hist-mobile  { display: block; }
+
+  /* Stack action buttons vertically on small phones */
+  .checkin-btns { flex-direction: column !important; }
+}

@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { todayDate } from '@/lib/attendance'
+import { todayDate, isPastHardAbsentCutoff } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { Chip, LocBadge } from '@/components/ui'
 import { PresenceDatePicker } from './PresenceDatePicker'
@@ -27,11 +27,15 @@ export default async function PresencePage({ searchParams }: Props) {
   const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
 
+  // For today: after 16:30 with no check-in = ขาด; before 16:30 = ยังไม่มา
+  // For past dates: always treat no check-in as absent
+  const hardCutoffPassed = !isToday || isPastHardAbsentCutoff()
+
   const rows = users.map(u => {
     const r  = recMap[u.id] ?? null
     const es = r?.check_in_at
       ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
-      : 'absent'
+      : hardCutoffPassed ? 'absent' : 'not_checked'
     return { user: u, record: r, effectiveStatus: es }
   })
 
@@ -40,11 +44,13 @@ export default async function PresencePage({ searchParams }: Props) {
       if      (r.effectiveStatus === 'wfh')                                     a.wfh++
       else if (r.effectiveStatus === 'present')                                  a.campus++
       else if (r.effectiveStatus === 'late' || r.effectiveStatus === 'wfh_late') a.late++
-      else                                                                       a.absent++
+      else if (r.effectiveStatus === 'absent')                                   a.absent++
+      else                                                                       a.not_checked++
       return a
     },
-    { campus: 0, wfh: 0, late: 0, absent: 0 }
+    { campus: 0, wfh: 0, late: 0, absent: 0, not_checked: 0 }
   )
+  const notPresentCount = hardCutoffPassed ? counts.absent : counts.not_checked
 
   const total      = rows.length
   const presentAll = counts.campus + counts.wfh + counts.late
@@ -69,32 +75,39 @@ export default async function PresencePage({ searchParams }: Props) {
       rows: rows.filter(r => r.effectiveStatus === 'wfh'),
     },
     {
-      key: 'late', label: 'มาสาย', sublabel: 'เช็คอินหลัง 08:00 น.',
+      key: 'late', label: 'มาสาย', sublabel: `เช็คอินหลัง ${process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'} น.`,
       color: 'var(--warn)', dimColor: 'var(--warn-dim)', textColor: 'var(--warn-text)',
       borderColor: 'rgba(217,119,6,.2)',
       rows: rows.filter(r => r.effectiveStatus === 'late' || r.effectiveStatus === 'wfh_late'),
     },
     {
-      key: 'absent', label: 'ยังไม่มา', sublabel: 'ยังไม่มีการเช็คอิน',
-      color: 'var(--danger)', dimColor: 'var(--danger-dim)', textColor: 'var(--danger-text)',
-      borderColor: 'rgba(220,38,38,.2)',
-      rows: rows.filter(r => r.effectiveStatus === 'absent'),
+      key: 'absent',
+      label:    hardCutoffPassed ? 'ขาด'              : 'ยังไม่มา',
+      sublabel: hardCutoffPassed ? 'ไม่มีการลงชื่อเข้า' : 'ยังไม่ได้ลงชื่อเข้า',
+      color:       hardCutoffPassed ? 'var(--danger)'     : 'var(--neutral)',
+      dimColor:    hardCutoffPassed ? 'var(--danger-dim)'  : 'var(--neutral-dim)',
+      textColor:   hardCutoffPassed ? 'var(--danger-text)' : 'var(--text-muted)',
+      borderColor: hardCutoffPassed ? 'rgba(220,38,38,.2)' : 'rgba(107,114,128,.2)',
+      rows: rows.filter(r => r.effectiveStatus === 'absent' || r.effectiveStatus === 'not_checked'),
     },
   ].filter(g => g.rows.length > 0)
 
-  const chipVariant: Record<string, 'ok' | 'warn' | 'danger' | 'blue'> = {
-    present: 'ok', wfh: 'blue', late: 'warn', wfh_late: 'warn', absent: 'danger',
+  const chipVariant: Record<string, 'ok' | 'warn' | 'danger' | 'blue' | 'neutral'> = {
+    present: 'ok', wfh: 'blue', late: 'warn', wfh_late: 'warn',
+    absent: 'danger', not_checked: 'neutral',
   }
   const chipLabel: Record<string, string> = {
-    present: 'ปกติ', wfh: 'WFH', late: 'สาย', wfh_late: 'WFH · สาย', absent: 'ยังไม่มา',
+    present: 'ปกติ', wfh: 'WFH', late: 'สาย', wfh_late: 'WFH · สาย',
+    absent: 'ขาด', not_checked: 'ยังไม่มา',
   }
 
   /* ── Segmented bar widths ──────────────────────────────────── */
   const seg = {
-    campus: total ? counts.campus / total * 100 : 0,
-    wfh:    total ? counts.wfh    / total * 100 : 0,
-    late:   total ? counts.late   / total * 100 : 0,
-    absent: total ? counts.absent / total * 100 : 0,
+    campus:      total ? counts.campus      / total * 100 : 0,
+    wfh:         total ? counts.wfh         / total * 100 : 0,
+    late:        total ? counts.late        / total * 100 : 0,
+    absent:      total ? counts.absent      / total * 100 : 0,
+    not_checked: total ? counts.not_checked / total * 100 : 0,
   }
 
   return (
@@ -167,10 +180,15 @@ export default async function PresencePage({ searchParams }: Props) {
         {/* 4 stat pills */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, marginBottom: 14 }}>
           {[
-            { label: 'วิทยาลัย',      n: counts.campus, color: 'var(--ok-text)',    bg: 'var(--ok-dim)' },
-            { label: 'Work From Home', n: counts.wfh,    color: 'var(--blue-text)',  bg: 'var(--blue-dim)' },
-            { label: 'มาสาย',         n: counts.late,   color: 'var(--warn-text)',  bg: 'var(--warn-dim)' },
-            { label: 'ยังไม่มา',      n: counts.absent, color: 'var(--danger-text)', bg: 'var(--danger-dim)' },
+            { label: 'วิทยาลัย',      n: counts.campus,    color: 'var(--ok-text)',                                              bg: 'var(--ok-dim)' },
+            { label: 'Work From Home', n: counts.wfh,      color: 'var(--blue-text)',                                            bg: 'var(--blue-dim)' },
+            { label: 'มาสาย',         n: counts.late,     color: 'var(--warn-text)',                                            bg: 'var(--warn-dim)' },
+            {
+              label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
+              n: notPresentCount,
+              color: hardCutoffPassed ? 'var(--danger-text)' : 'var(--text-muted)',
+              bg:    hardCutoffPassed ? 'var(--danger-dim)'  : 'var(--neutral-dim)',
+            },
           ].map((s, idx) => (
             <div key={s.label} style={{
               textAlign: 'center', padding: '10px 8px',
@@ -184,17 +202,18 @@ export default async function PresencePage({ searchParams }: Props) {
 
         {/* Segmented bar */}
         <div style={{ height: 6, borderRadius: 99, overflow: 'hidden', display: 'flex', background: 'var(--line)' }}>
-          {seg.campus > 0 && <div style={{ width: `${seg.campus}%`, background: 'var(--ok)',     transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.wfh    > 0 && <div style={{ width: `${seg.wfh}%`,    background: 'var(--blue)',   transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.late   > 0 && <div style={{ width: `${seg.late}%`,   background: 'var(--warn)',   transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.absent > 0 && <div style={{ width: `${seg.absent}%`, background: 'var(--danger)', transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.campus      > 0 && <div style={{ width: `${seg.campus}%`,      background: 'var(--ok)',       transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.wfh         > 0 && <div style={{ width: `${seg.wfh}%`,         background: 'var(--blue)',     transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.late        > 0 && <div style={{ width: `${seg.late}%`,        background: 'var(--warn)',     transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.absent      > 0 && <div style={{ width: `${seg.absent}%`,      background: 'var(--danger)',   transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.not_checked > 0 && <div style={{ width: `${seg.not_checked}%`, background: 'var(--line-mid)', transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
         </div>
         <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
           {[
-            { label: 'วิทยาลัย', color: 'var(--ok)' },
-            { label: 'WFH',      color: 'var(--blue)' },
-            { label: 'สาย',      color: 'var(--warn)' },
-            { label: 'ขาด',      color: 'var(--danger)' },
+            { label: 'วิทยาลัย',                              color: 'var(--ok)' },
+            { label: 'WFH',                                   color: 'var(--blue)' },
+            { label: 'สาย',                                   color: 'var(--warn)' },
+            { label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',  color: hardCutoffPassed ? 'var(--danger)' : 'var(--line-mid)' },
           ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 7, height: 7, borderRadius: 2, background: l.color }} />

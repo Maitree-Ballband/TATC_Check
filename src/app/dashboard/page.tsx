@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { todayDate } from '@/lib/attendance'
+import { todayDate, isPastHardAbsentCutoff } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { Chip, LocBadge } from '@/components/ui'
 
@@ -18,11 +18,14 @@ export default async function DashboardPage() {
   const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
 
+  // After 16:30 with no check-in = ขาด; before 16:30 = ยังไม่มา (not yet checked in)
+  const hardCutoffPassed = isPastHardAbsentCutoff()
+
   const rows = (users ?? []).map(u => {
     const r  = recMap[u.id] ?? null
     const es = r?.check_in_at
       ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
-      : 'absent'
+      : hardCutoffPassed ? 'absent' : 'not_checked'
     return { user: u, record: r, effectiveStatus: es }
   })
 
@@ -31,10 +34,11 @@ export default async function DashboardPage() {
       if      (r.effectiveStatus === 'wfh')                                     a.wfh++
       else if (r.effectiveStatus === 'present')                                  a.campus++
       else if (r.effectiveStatus === 'late' || r.effectiveStatus === 'wfh_late') a.late++
-      else                                                                       a.absent++
+      else if (r.effectiveStatus === 'absent')                                   a.absent++
+      else                                                                       a.not_checked++
       return a
     },
-    { campus: 0, wfh: 0, late: 0, absent: 0 }
+    { campus: 0, wfh: 0, late: 0, absent: 0, not_checked: 0 }
   )
   const total      = rows.length
   const presentAll = stats.campus + stats.wfh + stats.late
@@ -49,12 +53,16 @@ export default async function DashboardPage() {
     timeZone: 'Asia/Bangkok', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
+  // Combined "no check-in" for display
+  const notPresentCount = hardCutoffPassed ? stats.absent : stats.not_checked
+
   /* segment bar widths */
   const seg = {
-    campus: total ? (stats.campus / total * 100) : 0,
-    wfh:    total ? (stats.wfh    / total * 100) : 0,
-    late:   total ? (stats.late   / total * 100) : 0,
-    absent: total ? (stats.absent / total * 100) : 0,
+    campus:      total ? (stats.campus      / total * 100) : 0,
+    wfh:         total ? (stats.wfh         / total * 100) : 0,
+    late:        total ? (stats.late        / total * 100) : 0,
+    absent:      total ? (stats.absent      / total * 100) : 0,
+    not_checked: total ? (stats.not_checked / total * 100) : 0,
   }
 
   return (
@@ -110,10 +118,17 @@ export default async function DashboardPage() {
         display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 16,
       }}>
         {[
-          { label: 'มา (วิทยาลัย)', value: stats.campus, sub: `${total ? Math.round(stats.campus/total*100) : 0}% ของทั้งหมด`, color: 'var(--ok)',     dimColor: 'var(--ok-dim)',     textColor: 'var(--ok-text)' },
-          { label: 'Work From Home', value: stats.wfh,    sub: `${total ? Math.round(stats.wfh/total*100)    : 0}% ของทั้งหมด`, color: 'var(--blue)',   dimColor: 'var(--blue-dim)',   textColor: 'var(--blue-text)' },
-          { label: 'มาสาย',          value: stats.late,   sub: `เกิน 08:30 น.`,                                                  color: 'var(--warn)',   dimColor: 'var(--warn-dim)',   textColor: 'var(--warn-text)' },
-          { label: 'ยังไม่มา',       value: stats.absent, sub: `ณ เวลานี้`,                                                     color: 'var(--danger)', dimColor: 'var(--danger-dim)', textColor: 'var(--danger-text)' },
+          { label: 'มา (วิทยาลัย)', value: stats.campus,      sub: `${total ? Math.round(stats.campus/total*100) : 0}% ของทั้งหมด`, color: 'var(--ok)',      dimColor: 'var(--ok-dim)',      textColor: 'var(--ok-text)' },
+          { label: 'Work From Home', value: stats.wfh,         sub: `${total ? Math.round(stats.wfh/total*100)    : 0}% ของทั้งหมด`, color: 'var(--blue)',    dimColor: 'var(--blue-dim)',    textColor: 'var(--blue-text)' },
+          { label: 'มาสาย',          value: stats.late,        sub: `เกินเวลา ${process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'} น.`, color: 'var(--warn)',    dimColor: 'var(--warn-dim)',    textColor: 'var(--warn-text)' },
+          {
+            label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
+            value: notPresentCount,
+            sub:   hardCutoffPassed ? 'เกินเวลา ไม่มีการลงชื่อ' : 'ยังไม่ได้ลงชื่อ',
+            color:     hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)',
+            dimColor:  hardCutoffPassed ? 'var(--danger-dim)' : 'var(--neutral-dim)',
+            textColor: hardCutoffPassed ? 'var(--danger-text)' : 'var(--text-muted)',
+          },
         ].map(k => (
           <div key={k.label} style={{
             background: 'var(--bg-surface)', border: '1px solid var(--line)',
@@ -147,19 +162,20 @@ export default async function DashboardPage() {
 
         {/* Segmented bar */}
         <div style={{ height: 10, borderRadius: 99, overflow: 'hidden', display: 'flex', marginBottom: 14, background: 'var(--line)' }}>
-          {seg.campus > 0 && <div style={{ width: `${seg.campus}%`, background: 'var(--ok)',     transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.wfh    > 0 && <div style={{ width: `${seg.wfh}%`,    background: 'var(--blue)',   transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.late   > 0 && <div style={{ width: `${seg.late}%`,   background: 'var(--warn)',   transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
-          {seg.absent > 0 && <div style={{ width: `${seg.absent}%`, background: 'var(--danger)', transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.campus      > 0 && <div style={{ width: `${seg.campus}%`,      background: 'var(--ok)',      transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.wfh         > 0 && <div style={{ width: `${seg.wfh}%`,         background: 'var(--blue)',    transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.late        > 0 && <div style={{ width: `${seg.late}%`,        background: 'var(--warn)',    transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.absent      > 0 && <div style={{ width: `${seg.absent}%`,      background: 'var(--danger)',  transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
+          {seg.not_checked > 0 && <div style={{ width: `${seg.not_checked}%`, background: 'var(--line-mid)',transition: 'width 1s cubic-bezier(.16,1,.3,1)' }} />}
         </div>
 
         {/* Legend */}
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
           {[
-            { label: 'วิทยาลัย', count: stats.campus, color: 'var(--ok)' },
-            { label: 'WFH',      count: stats.wfh,    color: 'var(--blue)' },
-            { label: 'มาสาย',    count: stats.late,   color: 'var(--warn)' },
-            { label: 'ขาด',      count: stats.absent, color: 'var(--danger)' },
+            { label: 'วิทยาลัย',                                       count: stats.campus,      color: 'var(--ok)' },
+            { label: 'WFH',                                            count: stats.wfh,         color: 'var(--blue)' },
+            { label: 'มาสาย',                                          count: stats.late,        color: 'var(--warn)' },
+            { label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',            count: notPresentCount,   color: hardCutoffPassed ? 'var(--danger)' : 'var(--line-mid)' },
           ].map(l => (
             <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, flexShrink: 0 }} />
@@ -245,11 +261,12 @@ export default async function DashboardPage() {
                     </td>
                     {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
-                      {row.effectiveStatus === 'wfh'      && <Chip variant="blue"   label="WFH"         />}
-                      {row.effectiveStatus === 'present'  && <Chip variant="ok"     label="ปกติ"         />}
-                      {row.effectiveStatus === 'late'     && <Chip variant="warn"   label="สาย"          />}
-                      {row.effectiveStatus === 'wfh_late' && <Chip variant="warn"   label="WFH · สาย"    />}
-                      {row.effectiveStatus === 'absent'   && <Chip variant="danger" label="ยังไม่มา"     />}
+                      {row.effectiveStatus === 'wfh'         && <Chip variant="blue"    label="WFH"       />}
+                      {row.effectiveStatus === 'present'     && <Chip variant="ok"      label="ปกติ"      />}
+                      {row.effectiveStatus === 'late'        && <Chip variant="warn"    label="สาย"       />}
+                      {row.effectiveStatus === 'wfh_late'    && <Chip variant="warn"    label="WFH · สาย" />}
+                      {row.effectiveStatus === 'absent'      && <Chip variant="danger"  label="ขาด"       />}
+                      {row.effectiveStatus === 'not_checked' && <Chip variant="neutral" label="ยังไม่มา"  />}
                     </td>
                   </tr>
                 ))}

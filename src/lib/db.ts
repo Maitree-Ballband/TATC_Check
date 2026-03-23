@@ -209,6 +209,7 @@ export async function upsertCheckIn(payload: {
   check_in_lat:  number | null
   check_in_lng:  number | null
   status:        string
+  late_reason?:  string | null
 }) {
   const { data, error } = await client()
     .from('attendance_records')

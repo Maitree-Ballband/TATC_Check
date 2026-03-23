@@ -4,9 +4,10 @@ import type { AttendanceStatus } from '@/types'
 // ── School timezone ────────────────────────────────────────────
 // All date/time logic must operate in school local time, NOT server UTC.
 
-const SCHOOL_TZ    = process.env.NEXT_PUBLIC_SCHOOL_TZ ?? 'Asia/Bangkok'
-const CUTOFF       = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF ?? '08:00'   // HH:mm
-const ABSENT_CUTOFF = process.env.NEXT_PUBLIC_ABSENT_CUTOFF ?? '12:00'   // HH:mm — after this, no check-in = absent
+const SCHOOL_TZ          = process.env.NEXT_PUBLIC_SCHOOL_TZ                ?? 'Asia/Bangkok'
+const CUTOFF             = process.env.NEXT_PUBLIC_CHECKIN_CUTOFF           ?? '08:00'  // HH:mm
+const ABSENT_CUTOFF      = process.env.NEXT_PUBLIC_ABSENT_CUTOFF            ?? '12:00'  // HH:mm — after this, reason required
+const HARD_ABSENT_CUTOFF = process.env.NEXT_PUBLIC_CHECKOUT_AVAILABLE_AFTER ?? '16:30'  // HH:mm — after this, no check-in = absent
 
 // ── Geofence ───────────────────────────────────────────────────
 
@@ -63,13 +64,23 @@ export function resolveStatus(checkInAt: Date): AttendanceStatus {
 }
 
 /**
- * Returns true when the current school-local time is past the absent cutoff (default 12:00).
- * Teachers who have not checked in after this time are considered absent.
+ * Returns true when the current school-local time is past ABSENT_CUTOFF (default 12:00).
+ * Check-ins after this time require a late reason.
  */
 export function isPastAbsentCutoff(): boolean {
   const [cutH, cutM] = ABSENT_CUTOFF.split(':').map(Number)
   const { h, m } = schoolHM(new Date())
   return h * 60 + m > cutH * 60 + cutM
+}
+
+/**
+ * Returns true when the current school-local time is past HARD_ABSENT_CUTOFF (default 16:30).
+ * After this time, check-in is blocked completely and the teacher is marked absent.
+ */
+export function isPastHardAbsentCutoff(): boolean {
+  const [cutH, cutM] = HARD_ABSENT_CUTOFF.split(':').map(Number)
+  const { h, m } = schoolHM(new Date())
+  return h * 60 + m >= cutH * 60 + cutM
 }
 
 /**
@@ -98,8 +109,9 @@ export function formatTimeSchool(date: Date): string {
 
 export const checkInSchema = z.object({
   location_mode: z.enum(['campus', 'wfh']),
-  lat: z.number().min(-90).max(90).optional(),
-  lng: z.number().min(-180).max(180).optional(),
+  lat:    z.number().min(-90).max(90).optional(),
+  lng:    z.number().min(-180).max(180).optional(),
+  reason: z.string().min(10).max(500).optional(),
 }).refine(
   (d) => d.location_mode === 'wfh' || (d.lat != null && d.lng != null),
   { message: 'campus mode requires lat/lng' }
