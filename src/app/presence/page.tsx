@@ -40,19 +40,20 @@ export default async function PresencePage({ searchParams }: Props) {
 
   const counts = rows.reduce(
     (a, r) => {
-      if      (r.effectiveStatus === 'wfh')                                     a.wfh++
-      else if (r.effectiveStatus === 'present')                                  a.campus++
-      else if (r.effectiveStatus === 'late' || r.effectiveStatus === 'wfh_late') a.late++
-      else if (r.effectiveStatus === 'absent')                                   a.absent++
-      else                                                                       a.not_checked++
+      if      (r.effectiveStatus === 'present')   a.present++
+      else if (r.effectiveStatus === 'late')       a.late++
+      else if (r.effectiveStatus === 'wfh')        a.wfh++
+      else if (r.effectiveStatus === 'wfh_late')   a.wfh_late++
+      else if (r.effectiveStatus === 'absent')     a.absent++
+      else                                         a.not_checked++
       return a
     },
-    { campus: 0, wfh: 0, late: 0, absent: 0, not_checked: 0 }
+    { present: 0, late: 0, wfh: 0, wfh_late: 0, absent: 0, not_checked: 0 }
   )
   const notPresentCount = hardCutoffPassed ? counts.absent : counts.not_checked
 
   const total      = rows.length
-  const presentAll = counts.campus + counts.wfh + counts.late
+  const presentAll = counts.present + counts.late + counts.wfh + counts.wfh_late
   const attendRate = total ? Math.round(presentAll / total * 100) : 0
 
 

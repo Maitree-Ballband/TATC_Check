@@ -17,13 +17,13 @@ export type BoardRow = {
 interface Props {
   rows:             BoardRow[]
   hardCutoffPassed: boolean
-  counts:           { campus: number; wfh: number; late: number; absent: number; not_checked: number }
+  counts:           { present: number; late: number; wfh: number; wfh_late: number; absent: number; not_checked: number }
   total:            number
   notPresentCount:  number
   date:             string
 }
 
-type FilterKey = 'present' | 'wfh' | 'late' | 'absent' | null
+type FilterKey = 'present' | 'late' | 'wfh' | 'wfh_late' | 'absent' | null
 
 // ── Status display config ─────────────────────────────────────
 const STATUS_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -65,11 +65,12 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
   // Filter logic
   const matchesFilter = (es: string): boolean => {
-    if (filter === null)      return true
-    if (filter === 'present') return es === 'present'
-    if (filter === 'wfh')     return es === 'wfh'
-    if (filter === 'late')    return es === 'late' || es === 'wfh_late'
-    if (filter === 'absent')  return es === 'absent' || es === 'not_checked'
+    if (filter === null)           return true
+    if (filter === 'present')      return es === 'present'
+    if (filter === 'late')         return es === 'late'
+    if (filter === 'wfh')          return es === 'wfh'
+    if (filter === 'wfh_late')     return es === 'wfh_late'
+    if (filter === 'absent')       return es === 'absent' || es === 'not_checked'
     return true
   }
 
@@ -81,12 +82,14 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
   // Summary pills
   const pills = [
-    { key: 'present' as FilterKey, label: 'วิทยาลัย', n: counts.campus,   color: 'var(--ok-text)',      bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'   },
-    { key: 'wfh'     as FilterKey, label: 'WFH',       n: counts.wfh,      color: 'var(--blue-text)',    bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'   },
-    { key: 'late'    as FilterKey, label: 'สาย',        n: counts.late,     color: 'var(--warn-text)',    bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
+    { key: 'present'  as FilterKey, label: 'วิทยาลัย', sub: 'ตรงเวลา', n: counts.present,   color: 'var(--ok-text)',   bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'  },
+    { key: 'late'     as FilterKey, label: 'วิทยาลัย', sub: 'สาย',     n: counts.late,      color: 'var(--warn-text)', bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'  },
+    { key: 'wfh'      as FilterKey, label: 'WFH',      sub: 'ตรงเวลา', n: counts.wfh,       color: 'var(--blue-text)', bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'  },
+    { key: 'wfh_late' as FilterKey, label: 'WFH',      sub: 'สาย',     n: counts.wfh_late,  color: 'var(--warn-text)', bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'  },
     {
       key:   'absent' as FilterKey,
       label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
+      sub:   '',
       n:     notPresentCount,
       color: hardCutoffPassed ? 'var(--danger-text)' : 'var(--text-muted)',
       bg:    hardCutoffPassed ? 'var(--danger-dim)'  : 'var(--neutral-dim)',
@@ -102,24 +105,25 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         borderRadius: 12, padding: '14px 16px', marginBottom: 14,
         boxShadow: '0 1px 4px rgba(30,36,51,.05)',
       }}>
-        <div className="presence-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1 }}>
+        <div className="presence-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1 }}>
           {pills.map((p, idx) => {
             const isActive = filter === p.key
             return (
               <div
-                key={p.key}
+                key={String(p.key)}
                 onClick={() => toggleFilter(p.key)}
                 style={{
                   textAlign: 'center', padding: '10px 8px', cursor: 'pointer',
-                  borderRight: idx < 3 ? '1px solid var(--line)' : 'none',
-                  borderRadius: idx === 0 ? '8px 0 0 8px' : idx === 3 ? '0 8px 8px 0' : 'none',
+                  borderRight: idx < 4 ? '1px solid var(--line)' : 'none',
+                  borderRadius: idx === 0 ? '8px 0 0 8px' : idx === 4 ? '0 8px 8px 0' : 'none',
                   background: isActive ? p.bg : 'transparent',
                   outline: isActive ? `2px solid ${p.activeBorder}` : 'none',
                   outlineOffset: -1, transition: 'background .15s', userSelect: 'none',
                 }}
               >
-                <div style={{ fontSize: 28, fontWeight: 700, color: p.color, lineHeight: 1 }}>{p.n}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontWeight: isActive ? 700 : 400 }}>{p.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: p.color, lineHeight: 1 }}>{p.n}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 4, fontWeight: 600 }}>{p.label}</div>
+                {p.sub && <div style={{ fontSize: 10.5, color: isActive ? p.color : 'var(--text-muted)', marginTop: 2 }}>{p.sub}</div>}
               </div>
             )
           })}
@@ -158,11 +162,12 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
       {/* ── Filter bar + Export Excel ───────────────────────────── */}
       <div className="presence-filter-bar" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         {(([
-          { key: null,      label: 'ทั้งหมด',                               count: total,          color: 'var(--accent)' },
-          { key: 'present', label: 'วิทยาลัย',                              count: counts.campus,  color: 'var(--ok)' },
-          { key: 'wfh',     label: 'WFH',                                   count: counts.wfh,     color: 'var(--blue)' },
-          { key: 'late',    label: 'สาย',                                   count: counts.late,    color: 'var(--warn)' },
-          { key: 'absent',  label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',   count: notPresentCount, color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
+          { key: null,        label: 'ทั้งหมด',                              count: total,             color: 'var(--accent)' },
+          { key: 'present',   label: 'วิทยาลัย ตรงเวลา',                    count: counts.present,    color: 'var(--ok)'     },
+          { key: 'late',      label: 'วิทยาลัย สาย',                        count: counts.late,       color: 'var(--warn)'   },
+          { key: 'wfh',       label: 'WFH',                                  count: counts.wfh,        color: 'var(--blue)'   },
+          { key: 'wfh_late',  label: 'WFH สาย',                             count: counts.wfh_late,   color: 'var(--warn)'   },
+          { key: 'absent',    label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา', count: notPresentCount,   color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
         ] as { key: FilterKey; label: string; count: number; color: string }[])).map(btn => {
           const isActive = filter === btn.key
           return (
