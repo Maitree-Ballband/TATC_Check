@@ -5,16 +5,24 @@ import * as db from '@/lib/db'
 import { todayDate } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
 import { Chip, LocBadge } from '@/components/ui'
+import { PresenceDatePicker } from './PresenceDatePicker'
 
 export const dynamic   = 'force-dynamic'
 export const revalidate = 0
 
-export default async function PresencePage() {
+interface Props {
+  searchParams: { date?: string }
+}
+
+export default async function PresencePage({ searchParams }: Props) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin')
   if (session.user.role === 'teacher') redirect('/checkin')
 
-  const date    = todayDate()
+  const today   = todayDate()
+  const date    = searchParams.date ?? today
+  const isToday = date === today
+
   const users   = await db.listActiveTeachers()
   const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
@@ -42,7 +50,7 @@ export default async function PresencePage() {
   const presentAll = counts.campus + counts.wfh + counts.late
   const attendRate = total ? Math.round(presentAll / total * 100) : 0
 
-  const dateLabel = new Date().toLocaleDateString('th-TH', {
+  const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('th-TH', {
     timeZone: 'Asia/Bangkok', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 
@@ -107,7 +115,10 @@ export default async function PresencePage() {
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{dateLabel}</div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          {/* Date picker */}
+          <PresenceDatePicker date={date} today={today} />
+
           {/* Attendance rate badge */}
           <div style={{
             padding: '8px 16px', borderRadius: 8,
@@ -118,19 +129,32 @@ export default async function PresencePage() {
             <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, color: attendRate >= 80 ? 'var(--ok-text)' : attendRate >= 50 ? 'var(--warn-text)' : 'var(--danger-text)' }}>
               {attendRate}%
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '.05em' }}>เข้างานวันนี้</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '.05em' }}>
+              {isToday ? 'เข้างานวันนี้' : 'เข้างานวันนั้น'}
+            </div>
           </div>
 
-          {/* Live badge */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 6,
-            background: 'var(--ok-dim)', border: '1px solid rgba(22,163,74,.2)',
-            fontSize: 12, fontWeight: 600, color: 'var(--ok-text)',
-          }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 0 2px var(--ok-dim)' }} />
-            LIVE
-          </div>
+          {/* Live / Past badge */}
+          {isToday ? (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 6,
+              background: 'var(--ok-dim)', border: '1px solid rgba(22,163,74,.2)',
+              fontSize: 12, fontWeight: 600, color: 'var(--ok-text)',
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ok)', boxShadow: '0 0 0 2px var(--ok-dim)' }} />
+              LIVE
+            </div>
+          ) : (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 6,
+              background: 'var(--bg-raised)', border: '1px solid var(--line-mid)',
+              fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+            }}>
+              ย้อนหลัง
+            </div>
+          )}
         </div>
       </div>
 
