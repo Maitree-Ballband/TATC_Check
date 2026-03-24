@@ -25,14 +25,15 @@ interface Props {
 }
 
 type FilterKey = 'present' | 'late' | 'wfh' | 'wfh_late' | 'absent' | 'not_registered' | null
+type LocFilter  = 'campus' | 'wfh' | null
 
 // ── Status display config ─────────────────────────────────────
 const STATUS_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  present:        { bg: 'var(--ok-dim)',      text: 'var(--ok-text)',        border: 'rgba(22,163,74,.2)',  dot: 'var(--ok)'      },
-  wfh:            { bg: 'var(--blue-dim)',    text: 'var(--blue-text)',      border: 'rgba(37,99,235,.2)',  dot: 'var(--blue)'    },
-  late:           { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
-  wfh_late:       { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
-  absent:         { bg: 'var(--danger-dim)',  text: 'var(--danger-text)',    border: 'rgba(220,38,38,.2)',  dot: 'var(--danger)'  },
+  present:        { bg: 'var(--ok-dim)',      text: 'var(--ok-text)',        border: 'rgba(22,163,74,.2)',  dot: 'var(--ok)'       },
+  wfh:            { bg: 'var(--blue-dim)',    text: 'var(--blue-text)',      border: 'rgba(37,99,235,.2)',  dot: 'var(--blue)'     },
+  late:           { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'     },
+  wfh_late:       { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'     },
+  absent:         { bg: 'var(--danger-dim)',  text: 'var(--danger-text)',    border: 'rgba(220,38,38,.2)',  dot: 'var(--danger)'   },
   not_checked:    { bg: 'var(--neutral-dim)', text: 'var(--text-secondary)', border: 'var(--line)',         dot: 'var(--line-mid)' },
   not_registered: { bg: 'var(--bg-active)',   text: 'var(--text-muted)',     border: 'var(--line-mid)',     dot: 'var(--line-mid)' },
 }
@@ -70,25 +71,98 @@ function LocPill({ mode }: { mode: 'campus' | 'wfh' | null }) {
   )
 }
 
+// ── Location segment control ───────────────────────────────────
+function LocSegment({
+  value, onChange, campusCount, wfhCount, activeColor,
+}: {
+  value: LocFilter
+  onChange: (v: LocFilter) => void
+  campusCount: number
+  wfhCount: number
+  activeColor: string
+}) {
+  const opts: { key: LocFilter; label: string; count?: number }[] = [
+    { key: null,     label: 'ทั้งหมด' },
+    { key: 'campus', label: 'วิทยาลัย', count: campusCount },
+    { key: 'wfh',    label: 'WFH',       count: wfhCount    },
+  ]
+  return (
+    <div style={{ display: 'inline-flex', borderRadius: 7, border: '1px solid var(--line-mid)', overflow: 'hidden', flexShrink: 0 }}>
+      {opts.map((opt, i) => {
+        const isActive = value === opt.key
+        return (
+          <button
+            key={String(opt.key)}
+            onClick={() => onChange(value === opt.key ? null : opt.key)}
+            style={{
+              padding: '5px 11px', fontSize: 12.5, fontWeight: isActive ? 700 : 500,
+              background: isActive ? activeColor : 'var(--bg-surface)',
+              color: isActive ? '#fff' : 'var(--text-secondary)',
+              border: 'none',
+              borderLeft: i > 0 ? '1px solid var(--line-mid)' : 'none',
+              cursor: 'pointer', transition: 'background .12s, color .12s',
+              whiteSpace: 'nowrap', fontFamily: "'Sarabun', sans-serif",
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            {opt.label}
+            {opt.count !== undefined && (
+              <span style={{
+                fontSize: 10.5, fontWeight: 700, lineHeight: 1,
+                padding: '1px 5px', borderRadius: 99,
+                background: isActive ? 'rgba(255,255,255,.22)' : 'var(--bg-active)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+              }}>
+                {opt.count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Active filter chip ─────────────────────────────────────────
+function FilterChip({ label, onRemove, bg, color, border }: {
+  label: string; onRemove: () => void
+  bg: string; color: string; border: string
+}) {
+  return (
+    <span
+      onClick={onRemove}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '3px 9px 3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+        cursor: 'pointer', userSelect: 'none',
+        background: bg, color, border: `1px solid ${border}`,
+        transition: 'opacity .12s',
+      }}
+    >
+      {label}
+      <span style={{ fontSize: 10, opacity: 0.65, fontWeight: 800, marginLeft: 1 }}>✕</span>
+    </span>
+  )
+}
+
 export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresentCount, date }: Props) {
-  const [filter, setFilter] = useState<FilterKey>(null)
-  const [search, setSearch] = useState('')
-  const [locInFilter,  setLocInFilter]  = useState<'campus' | 'wfh' | null>(null)
-  const [locOutFilter, setLocOutFilter] = useState<'campus' | 'wfh' | null>(null)
+  const [filter,       setFilter]       = useState<FilterKey>(null)
+  const [search,       setSearch]       = useState('')
+  const [locInFilter,  setLocInFilter]  = useState<LocFilter>(null)
+  const [locOutFilter, setLocOutFilter] = useState<LocFilter>(null)
 
   function toggleFilter(key: FilterKey) {
     setFilter(f => f === key ? null : key)
   }
 
-  // Filter logic
   const matchesFilter = (es: string): boolean => {
-    if (filter === null)               return true
-    if (filter === 'present')          return es === 'present'
-    if (filter === 'late')             return es === 'late'
-    if (filter === 'wfh')              return es === 'wfh'
-    if (filter === 'wfh_late')         return es === 'wfh_late'
-    if (filter === 'absent')           return es === 'absent' || es === 'not_checked'
-    if (filter === 'not_registered')   return es === 'not_registered'
+    if (filter === null)             return true
+    if (filter === 'present')        return es === 'present'
+    if (filter === 'late')           return es === 'late'
+    if (filter === 'wfh')            return es === 'wfh'
+    if (filter === 'wfh_late')       return es === 'wfh_late'
+    if (filter === 'absent')         return es === 'absent' || es === 'not_checked'
+    if (filter === 'not_registered') return es === 'not_registered'
     return true
   }
 
@@ -107,12 +181,25 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
     return true
   })
 
-  // Summary pills
+  const anyFilter = filter !== null || locInFilter !== null || locOutFilter !== null || q.length > 0
+
+  const clearAll = () => { setFilter(null); setLocInFilter(null); setLocOutFilter(null); setSearch('') }
+
+  const STATUS_FILTER_LABEL: Record<string, string> = {
+    present:        'วิทยาลัย ตรงเวลา',
+    late:           'วิทยาลัย สาย',
+    wfh:            'WFH ตรงเวลา',
+    wfh_late:       'WFH สาย',
+    absent:         hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
+    not_registered: 'ยังไม่ลงทะเบียน',
+  }
+
+  // ── Summary pills ──────────────────────────────────────────
   const pills = [
-    { key: 'present'        as FilterKey, label: 'วิทยาลัย',           sub: 'ตรงเวลา', n: counts.present,        color: 'var(--ok-text)',    bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'   },
-    { key: 'late'           as FilterKey, label: 'วิทยาลัย',           sub: 'สาย',     n: counts.late,           color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
-    { key: 'wfh'            as FilterKey, label: 'WFH',                 sub: 'ตรงเวลา', n: counts.wfh,            color: 'var(--blue-text)',  bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'   },
-    { key: 'wfh_late'       as FilterKey, label: 'WFH',                 sub: 'สาย',     n: counts.wfh_late,       color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
+    { key: 'present'        as FilterKey, label: 'วิทยาลัย',         sub: 'ตรงเวลา', n: counts.present,        color: 'var(--ok-text)',    bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'   },
+    { key: 'late'           as FilterKey, label: 'วิทยาลัย',         sub: 'สาย',     n: counts.late,           color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
+    { key: 'wfh'            as FilterKey, label: 'WFH',               sub: 'ตรงเวลา', n: counts.wfh,            color: 'var(--blue-text)',  bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'   },
+    { key: 'wfh_late'       as FilterKey, label: 'WFH',               sub: 'สาย',     n: counts.wfh_late,       color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
     {
       key:   'absent' as FilterKey,
       label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
@@ -122,17 +209,21 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
       bg:    hardCutoffPassed ? 'var(--danger-dim)'  : 'var(--neutral-dim)',
       activeBorder: hardCutoffPassed ? 'rgba(220,38,38,.4)' : 'rgba(107,114,128,.4)',
     },
-    { key: 'not_registered' as FilterKey, label: 'ยังไม่ลงทะเบียน',   sub: '',        n: counts.not_registered, color: 'var(--text-muted)', bg: 'var(--bg-active)',   activeBorder: 'rgba(107,114,128,.4)' },
+    { key: 'not_registered' as FilterKey, label: 'ยังไม่ลงทะเบียน', sub: '', n: counts.not_registered, color: 'var(--text-muted)', bg: 'var(--bg-active)', activeBorder: 'rgba(107,114,128,.4)' },
   ]
 
   return (
     <div>
-      {/* ── Summary pills ─────────────────────────────────────── */}
+
+      {/* ── Zone 1: Summary stats (clickable → status filter) ── */}
       <div style={{
         background: 'var(--bg-surface)', border: '1px solid var(--line)',
-        borderRadius: 12, padding: '14px 16px', marginBottom: 14,
+        borderRadius: 12, padding: '14px 16px', marginBottom: 10,
         boxShadow: '0 1px 4px rgba(30,36,51,.05)',
       }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '.09em', textTransform: 'uppercase', marginBottom: 10 }}>
+          คลิกที่ตัวเลขเพื่อกรองสถานะ
+        </div>
         <div className="presence-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1 }}>
           {pills.map((p, idx) => {
             const isActive = filter === p.key
@@ -158,163 +249,159 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
       </div>
 
-      {/* ── Search box ───────────────────────────────────────────── */}
-      <div style={{ marginBottom: 10, position: 'relative', maxWidth: 340 }}>
-        <svg style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }}
-          width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
-        </svg>
-        <input
-          type="text"
-          placeholder="ค้นหาชื่อ หรือ แผนก…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{
-            width: '100%', padding: '9px 34px 9px 34px', borderRadius: 8, fontSize: 13.5,
-            background: 'var(--bg-surface)', border: `1.5px solid ${search ? 'var(--accent)' : 'var(--line)'}`,
-            color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
-            outline: 'none', boxSizing: 'border-box',
-            boxShadow: search ? '0 0 0 3px rgba(61,90,241,.1)' : '0 1px 3px rgba(0,0,0,.06)',
-          }}
-        />
-        {search && (
-          <button onClick={() => setSearch('')} style={{
-            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg-active)',
-            border: '1px solid var(--line)', borderRadius: 4,
-            cursor: 'pointer', padding: '1px 5px', lineHeight: 1.4,
-          }}>✕</button>
-        )}
-      </div>
+      {/* ── Zone 2: Unified Filter Toolbar ─────────────────────── */}
+      <div style={{
+        background: 'var(--bg-surface)', border: '1px solid var(--line)',
+        borderRadius: 10, marginBottom: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,.04)',
+      }}>
 
-      {/* ── Filter bar + Export Excel ───────────────────────────── */}
-      <div className="presence-filter-bar" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        {(([
-          { key: null,              label: 'ทั้งหมด',                              count: total,                   color: 'var(--accent)' },
-          { key: 'present',         label: 'วิทยาลัย ตรงเวลา',                    count: counts.present,          color: 'var(--ok)'     },
-          { key: 'late',            label: 'วิทยาลัย สาย',                        count: counts.late,             color: 'var(--warn)'   },
-          { key: 'wfh',             label: 'WFH',                                  count: counts.wfh,              color: 'var(--blue)'   },
-          { key: 'wfh_late',        label: 'WFH สาย',                             count: counts.wfh_late,         color: 'var(--warn)'   },
-          { key: 'absent',          label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา', count: notPresentCount,         color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
-          { key: 'not_registered',  label: 'ยังไม่ลงทะเบียน',                    count: counts.not_registered,   color: 'var(--neutral)' },
-        ] as { key: FilterKey; label: string; count: number; color: string }[])).map(btn => {
-          const isActive = filter === btn.key
-          return (
-            <button
-              key={String(btn.key)}
-              onClick={() => toggleFilter(btn.key)}
+        {/* ── Toolbar row ── */}
+        <div className="presence-filter-toolbar" style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 12px', flexWrap: 'wrap',
+          borderBottom: anyFilter ? '1px solid var(--line)' : 'none',
+        }}>
+
+          {/* Search input */}
+          <div style={{ position: 'relative', flex: '1 1 180px', maxWidth: 260 }}>
+            <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }}
+              width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="7" cy="7" r="5"/><path d="M12 12l2 2"/>
+            </svg>
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ หรือ แผนก…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               style={{
-                padding: '6px 14px', borderRadius: 99, fontSize: 13, fontWeight: 600,
-                border: `1.5px solid ${isActive ? btn.color : 'var(--line-mid)'}`,
-                background: isActive ? btn.color : 'var(--bg-surface)',
-                color: isActive ? '#fff' : 'var(--text-secondary)',
+                width: '100%', padding: '7px 28px 7px 30px', borderRadius: 7, fontSize: 13,
+                background: 'var(--bg-raised)',
+                border: `1.5px solid ${search ? 'var(--accent)' : 'var(--line)'}`,
+                color: 'var(--text-primary)', fontFamily: "'Sarabun', sans-serif",
+                outline: 'none', boxSizing: 'border-box',
+                boxShadow: search ? '0 0 0 3px rgba(61,90,241,.1)' : 'none',
+                transition: 'border-color .15s, box-shadow .15s',
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{
+                position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-active)',
+                border: '1px solid var(--line)', borderRadius: 4,
+                cursor: 'pointer', padding: '1px 5px', lineHeight: 1.5,
+              }}>✕</button>
+            )}
+          </div>
+
+          <div style={{ width: 1, height: 26, background: 'var(--line)', flexShrink: 0 }} />
+
+          {/* Location in segment */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              สถานที่เข้า
+            </span>
+            <LocSegment
+              value={locInFilter}
+              onChange={v => setLocInFilter(v)}
+              campusCount={locInCampus}
+              wfhCount={locInWfh}
+              activeColor="var(--ok)"
+            />
+          </div>
+
+          <div style={{ width: 1, height: 26, background: 'var(--line)', flexShrink: 0 }} />
+
+          {/* Location out segment */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              สถานที่ออก
+            </span>
+            <LocSegment
+              value={locOutFilter}
+              onChange={v => setLocOutFilter(v)}
+              campusCount={locOutCampus}
+              wfhCount={locOutWfh}
+              activeColor="var(--blue)"
+            />
+          </div>
+
+          {/* Right: result count + export */}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontWeight: 700, color: anyFilter ? 'var(--accent)' : 'var(--text-secondary)' }}>{visibleRows.length}</span>
+              <span style={{ margin: '0 3px', opacity: 0.4 }}>/</span>
+              {total} คน
+            </span>
+            <button
+              onClick={() => { window.location.href = `/api/admin/export-presence?date=${date}` }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 14px', borderRadius: 7, fontSize: 13, fontWeight: 600,
+                background: 'var(--ok)', color: '#fff',
+                border: '1px solid var(--ok)',
                 cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
-                transition: 'all .15s', whiteSpace: 'nowrap',
+                boxShadow: '0 1px 4px rgba(22,163,74,.2)', transition: 'all .15s', whiteSpace: 'nowrap',
               }}
             >
-              {btn.label}
-              <span style={{
-                marginLeft: 6, fontSize: 11, fontWeight: 700,
-                opacity: isActive ? 0.85 : 0.6,
-                background: isActive ? 'rgba(255,255,255,.2)' : 'var(--bg-active)',
-                color: isActive ? 'inherit' : 'var(--text-muted)',
-                padding: '1px 6px', borderRadius: 99,
-              }}>
-                {btn.count}
-              </span>
+              <ExcelIcon />
+              Export
             </button>
-          )
-        })}
-        {(filter !== null || locInFilter !== null || locOutFilter !== null) && (
-          <button
-            onClick={() => { setFilter(null); setLocInFilter(null); setLocOutFilter(null) }}
-            style={{
-              padding: '6px 12px', borderRadius: 99, fontSize: 12,
-              border: '1.5px solid var(--line-mid)', background: 'transparent',
-              color: 'var(--text-muted)', cursor: 'pointer',
-              fontFamily: "'Sarabun', sans-serif", transition: 'all .15s',
-            }}
-          >
-            ✕ ล้างตัวกรอง
-          </button>
+          </div>
+        </div>
+
+        {/* ── Active filter chips (only when filtering) ── */}
+        {anyFilter && (
+          <div style={{
+            padding: '8px 12px', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
+            background: 'var(--bg-raised)',
+          }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', marginRight: 2 }}>
+              กรอง
+            </span>
+
+            {filter && (
+              <FilterChip
+                label={`สถานะ: ${STATUS_FILTER_LABEL[filter]}`}
+                onRemove={() => setFilter(null)}
+                bg="rgba(61,90,241,.08)" color="var(--accent)" border="rgba(61,90,241,.2)"
+              />
+            )}
+            {locInFilter && (
+              <FilterChip
+                label={`เข้า: ${locInFilter === 'campus' ? 'วิทยาลัย' : 'WFH'}`}
+                onRemove={() => setLocInFilter(null)}
+                bg="var(--ok-dim)" color="var(--ok-text)" border="rgba(22,163,74,.25)"
+              />
+            )}
+            {locOutFilter && (
+              <FilterChip
+                label={`ออก: ${locOutFilter === 'campus' ? 'วิทยาลัย' : 'WFH'}`}
+                onRemove={() => setLocOutFilter(null)}
+                bg="var(--blue-dim)" color="var(--blue-text)" border="rgba(37,99,235,.25)"
+              />
+            )}
+            {q && (
+              <FilterChip
+                label={`"${search.length > 18 ? search.slice(0, 18) + '…' : search}"`}
+                onRemove={() => setSearch('')}
+                bg="var(--bg-active)" color="var(--text-secondary)" border="var(--line-mid)"
+              />
+            )}
+
+            <button
+              onClick={clearAll}
+              style={{
+                marginLeft: 4, fontSize: 12, color: 'var(--text-muted)', background: 'transparent',
+                border: 'none', cursor: 'pointer', padding: '2px 4px',
+                fontFamily: "'Sarabun', sans-serif",
+                textDecoration: 'underline', textDecorationStyle: 'dotted',
+              }}
+            >
+              ล้างทั้งหมด
+            </button>
+          </div>
         )}
-
-        {/* Export Excel button */}
-        <div style={{ marginLeft: 'auto' }}>
-          <button
-            onClick={() => { window.location.href = `/api/admin/export-presence?date=${date}` }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '7px 16px', borderRadius: 7, fontSize: 13, fontWeight: 600,
-              background: 'var(--ok)', color: '#fff',
-              border: '1px solid var(--ok)',
-              cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
-              boxShadow: '0 2px 6px rgba(22,163,74,.2)', transition: 'all .15s',
-            }}
-          >
-            <ExcelIcon />
-            Export Excel
-          </button>
-        </div>
-      </div>
-
-      {/* ── Location filters ─────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Check-in location */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.04em' }}>สถานที่เข้า</span>
-          {([
-            { key: null     as 'campus'|'wfh'|null, label: 'ทั้งหมด',  count: locInCampus + locInWfh, color: 'var(--accent)' },
-            { key: 'campus' as 'campus'|'wfh'|null, label: 'วิทยาลัย', count: locInCampus,             color: 'var(--ok)'    },
-            { key: 'wfh'    as 'campus'|'wfh'|null, label: 'WFH',       count: locInWfh,               color: 'var(--blue)'  },
-          ]).map(btn => {
-            const isActive = locInFilter === btn.key
-            return (
-              <button key={String(btn.key)} onClick={() => setLocInFilter(f => f === btn.key ? null : btn.key)}
-                style={{
-                  padding: '4px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-                  border: `1.5px solid ${isActive ? btn.color : 'var(--line-mid)'}`,
-                  background: isActive ? btn.color : 'var(--bg-surface)',
-                  color: isActive ? '#fff' : 'var(--text-secondary)',
-                  cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
-                  transition: 'all .15s', whiteSpace: 'nowrap',
-                }}
-              >
-                {btn.label}
-                <span style={{ marginLeft: 5, fontSize: 10.5, fontWeight: 700, opacity: isActive ? 0.85 : 0.6, background: isActive ? 'rgba(255,255,255,.2)' : 'var(--bg-active)', color: isActive ? 'inherit' : 'var(--text-muted)', padding: '1px 5px', borderRadius: 99 }}>{btn.count}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        <div style={{ width: 1, height: 20, background: 'var(--line-mid)', alignSelf: 'center' }} />
-
-        {/* Check-out location */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.04em' }}>สถานที่ออก</span>
-          {([
-            { key: null     as 'campus'|'wfh'|null, label: 'ทั้งหมด',  count: locOutCampus + locOutWfh, color: 'var(--accent)' },
-            { key: 'campus' as 'campus'|'wfh'|null, label: 'วิทยาลัย', count: locOutCampus,              color: 'var(--ok)'    },
-            { key: 'wfh'    as 'campus'|'wfh'|null, label: 'WFH',       count: locOutWfh,                color: 'var(--blue)'  },
-          ]).map(btn => {
-            const isActive = locOutFilter === btn.key
-            return (
-              <button key={String(btn.key)} onClick={() => setLocOutFilter(f => f === btn.key ? null : btn.key)}
-                style={{
-                  padding: '4px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600,
-                  border: `1.5px solid ${isActive ? btn.color : 'var(--line-mid)'}`,
-                  background: isActive ? btn.color : 'var(--bg-surface)',
-                  color: isActive ? '#fff' : 'var(--text-secondary)',
-                  cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
-                  transition: 'all .15s', whiteSpace: 'nowrap',
-                }}
-              >
-                {btn.label}
-                <span style={{ marginLeft: 5, fontSize: 10.5, fontWeight: 700, opacity: isActive ? 0.85 : 0.6, background: isActive ? 'rgba(255,255,255,.2)' : 'var(--bg-active)', color: isActive ? 'inherit' : 'var(--text-muted)', padding: '1px 5px', borderRadius: 99 }}>{btn.count}</span>
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* ── Desktop table ──────────────────────────────────────── */}
@@ -350,8 +437,15 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
         {/* Rows */}
         {visibleRows.length === 0 && (
-          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-            ไม่มีข้อมูลในกลุ่มที่เลือก
+          <div style={{ padding: '40px 32px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>ไม่มีข้อมูลตรงกับเงื่อนไขที่เลือก</div>
+            {anyFilter && (
+              <button onClick={clearAll} style={{
+                fontSize: 12, color: 'var(--accent)', background: 'transparent',
+                border: 'none', cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
+                textDecoration: 'underline',
+              }}>ล้างตัวกรองทั้งหมด</button>
+            )}
           </div>
         )}
 
@@ -415,7 +509,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
               <div style={{ textAlign: 'center' }}><LocPill mode={locInMode} /></div>
 
               {/* Check-out time */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: row.checkOut ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
                 {row.checkOut ?? '—'}
               </div>
 
@@ -449,8 +543,15 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         boxShadow: '0 1px 4px rgba(30,36,51,.04)',
       }}>
         {visibleRows.length === 0 && (
-          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-            ไม่มีข้อมูลในกลุ่มที่เลือก
+          <div style={{ padding: '40px 32px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>ไม่มีข้อมูลตรงกับเงื่อนไขที่เลือก</div>
+            {anyFilter && (
+              <button onClick={clearAll} style={{
+                fontSize: 12, color: 'var(--accent)', background: 'transparent',
+                border: 'none', cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
+                textDecoration: 'underline',
+              }}>ล้างตัวกรองทั้งหมด</button>
+            )}
           </div>
         )}
         {visibleRows.map((row, idx) => {
@@ -493,7 +594,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ออก</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: row.checkOut ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
                         {row.checkOut ?? '—'}
                       </span>
                       {row.checkOut && <LocPill mode={row.locOutMode} />}
@@ -520,12 +621,6 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         })}
       </div>
 
-      {/* Row count */}
-      {visibleRows.length > 0 && (
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'right', marginTop: 8 }}>
-          แสดง {visibleRows.length} จาก {total} คน
-        </div>
-      )}
     </div>
   )
 }
