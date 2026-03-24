@@ -423,6 +423,11 @@ export default function CheckinPage() {
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginTop: 1 }}>
                   {session?.user?.dept ?? 'ไม่ระบุแผนก'}
                 </div>
+                {today?.record?.late_reason && (
+                  <div style={{ fontSize: 12, color: 'var(--warn-text)', fontFamily: 'var(--font-body)', marginTop: 4 }}>
+                    ⚠ {today.record.late_reason}
+                  </div>
+                )}
               </div>
               <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
                 {statusChip()}
@@ -452,13 +457,13 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{today?.checked_in ? 'ลงชื่อเข้าสำเร็จ' : isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'กดลงชื่อสาย' : 'กดลงชื่อเข้างาน'}</span>
-                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{today?.checked_in ? 'เข้าสำเร็จ' : isAbsent ? 'เลยกำหนดเวลา' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85, textAlign: 'center', lineHeight: 1.3 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? fmtTime(today.record.check_in_at)
-                    : isAbsent           ? `เกิน ${CHECKOUT_AFTER} น.`
-                    : isLate             ? 'ต้องระบุเหตุผล'
-                    : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง...'
+                    : isAbsent           ? `>${CHECKOUT_AFTER} น.`
+                    : isLate             ? 'ระบุเหตุผล'
+                    : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง'
                     : gpsState === 'error'   ? 'แก้ไข GPS ก่อน'
                     : locMode === 'campus'   ? 'วิทยาลัย'
                     : 'WFH'}
@@ -487,8 +492,8 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{today?.checked_out ? 'ลงชื่อออกสำเร็จ' : 'กดลงชื่อออกงาน'}</span>
-                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{today?.checked_out ? 'ออกสำเร็จ' : 'ลงชื่อออกงาน'}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85, textAlign: 'center', lineHeight: 1.3 }}>
                   {today?.checked_out && today.record?.check_out_at
                     ? fmtTime(today.record.check_out_at)
                     : `หลัง ${CHECKOUT_AFTER} น.`}

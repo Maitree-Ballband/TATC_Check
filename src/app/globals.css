@@ -298,6 +298,7 @@ input:focus, select:focus, textarea:focus {
   .checkin-hist-desktop { display: none; }
   .checkin-hist-mobile  { display: block; }
 
-  /* Stack action buttons vertically on small phones */
-  .checkin-btns { flex-direction: column !important; }
+  /* Side-by-side action buttons on mobile — compact sizing */
+  .checkin-btns { gap: 8px !important; }
+  .checkin-btns button { padding: 16px 6px !important; font-size: 15px !important; }
 }
