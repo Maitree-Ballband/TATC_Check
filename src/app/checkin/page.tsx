@@ -428,7 +428,7 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{today?.checked_in ? 'ลงชื่อเข้างาน' : isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'กดลงชื่อสาย' : 'กดลงชื่อเข้างาน'}</span>
+                <span>{today?.checked_in ? 'ลงชื่อเข้าสำเร็จ' : isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'กดลงชื่อสาย' : 'กดลงชื่อเข้างาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? fmtTime(today.record.check_in_at)
@@ -463,7 +463,7 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{today?.checked_in && isAfterCheckoutTime() && !today?.checked_out ? 'กดลงชื่อออกงาน' : 'ลงชื่อออกงาน'}</span>
+                <span>{today?.checked_out ? 'ลงชื่อออกสำเร็จ' : today?.checked_in && isAfterCheckoutTime() ? 'กดลงชื่อออกงาน' : 'ลงชื่อออกงาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_out && today.record?.check_out_at
                     ? fmtTime(today.record.check_out_at)
