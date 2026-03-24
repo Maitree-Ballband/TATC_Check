@@ -229,13 +229,13 @@ export default function CheckinPage() {
     : gpsState === 'error'                ? 'var(--danger-dim)'
     : isLate                              ? 'var(--warn-dim)'
     : gpsState === 'loading'              ? 'var(--bg-raised)'
-    : 'var(--text-primary)'
+    : 'var(--ok)'
   const checkinBtnColor = today?.checked_in ? 'var(--text-muted)'
     : isAbsent                              ? 'var(--danger-text)'
     : gpsState === 'error'                  ? 'var(--danger-text)'
     : isLate                                ? 'var(--warn-text)'
     : gpsState === 'loading'                ? 'var(--text-dim)'
-    : 'var(--bg-base)'
+    : '#fff'
 
   // Format timestamp to HH:MM น.
   const fmtTime = (iso: string) =>
@@ -407,6 +407,77 @@ export default function CheckinPage() {
             </div>
           </div>
 
+          {/* Action buttons */}
+          <div style={{ padding: '20px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="checkin-btns" style={{ display: 'flex', gap: 10 }}>
+
+              {/* ลงชื่อเข้า */}
+              <button
+                onClick={handleCheckin}
+                disabled={checkinBtnDisabled}
+                style={{
+                  flex: 1, padding: '22px 8px', borderRadius: 12,
+                  border: (!today?.checked_in && !isAbsent && !isLate && gpsState === 'ok') ? '2px solid var(--ok-text)' : 'none',
+                  fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
+                  fontFamily: 'var(--font-heading)',
+                  cursor: checkinBtnDisabled ? 'not-allowed' : 'pointer',
+                  background: checkinBtnBg,
+                  color: checkinBtnColor,
+                  opacity: gpsState === 'loading' ? 0.5 : 1,
+                  transition: 'all .15s',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                }}
+              >
+                <span>{today?.checked_in ? 'ลงชื่อเข้างาน' : isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'กดลงชื่อสาย' : 'กดลงชื่อเข้างาน'}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                  {today?.checked_in && today.record?.check_in_at
+                    ? fmtTime(today.record.check_in_at)
+                    : isAbsent           ? `เกิน ${CHECKOUT_AFTER} น.`
+                    : isLate             ? 'ต้องระบุเหตุผล'
+                    : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง...'
+                    : gpsState === 'error'   ? 'แก้ไข GPS ก่อน'
+                    : locMode === 'campus'   ? 'วิทยาลัย'
+                    : 'WFH'}
+                </span>
+              </button>
+
+              {/* ลงชื่อออก */}
+              <button
+                onClick={handleCheckout}
+                disabled={loading || !today?.checked_in || !isAfterCheckoutTime()}
+                style={{
+                  flex: 1, padding: '22px 8px', borderRadius: 12,
+                  fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
+                  fontFamily: 'var(--font-heading)',
+                  cursor: today?.checked_in && isAfterCheckoutTime() ? 'pointer' : 'not-allowed',
+                  background: !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
+                    : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue-dim)',
+                  color: !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
+                    : today?.checked_out ? 'var(--ok-text)' : 'var(--blue-text)',
+                  border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out
+                    ? '2px solid rgba(91,142,240,.35)'
+                    : today?.checked_in && isAfterCheckoutTime() && today?.checked_out
+                    ? '1px solid rgba(22,163,74,.3)'
+                    : '1px solid var(--line-mid)',
+                  transition: 'all .15s',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                }}
+              >
+                <span>{today?.checked_in && isAfterCheckoutTime() && !today?.checked_out ? 'กดลงชื่อออกงาน' : 'ลงชื่อออกงาน'}</span>
+                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
+                  {today?.checked_out && today.record?.check_out_at
+                    ? fmtTime(today.record.check_out_at)
+                    : `หลัง ${CHECKOUT_AFTER} น.`}
+                </span>
+              </button>
+            </div>
+
+            {/* Footer rule */}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
+              เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
+            </div>
+          </div>
+
           {/* Profile row */}
           <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -455,76 +526,6 @@ export default function CheckinPage() {
                 <span style={{ fontWeight: 600 }}>เหตุผลที่มาสาย: </span>{today.record.late_reason}
               </div>
             )}
-          </div>
-
-          {/* Action buttons */}
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className="checkin-btns" style={{ display: 'flex', gap: 10 }}>
-
-              {/* ลงชื่อเข้า */}
-              <button
-                onClick={handleCheckin}
-                disabled={checkinBtnDisabled}
-                style={{
-                  flex: 1, padding: '22px 8px', borderRadius: 12, border: 'none',
-                  fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
-                  fontFamily: 'var(--font-heading)',
-                  cursor: checkinBtnDisabled ? 'not-allowed' : 'pointer',
-                  background: checkinBtnBg,
-                  color: checkinBtnColor,
-                  opacity: gpsState === 'loading' ? 0.5 : 1,
-                  transition: 'all .15s',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                }}
-              >
-                <span>{isAbsent ? 'เลยกำหนดเวลาแล้ว' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
-                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
-                  {today?.checked_in && today.record?.check_in_at
-                    ? fmtTime(today.record.check_in_at)
-                    : isAbsent           ? `เกิน ${CHECKOUT_AFTER} น.`
-                    : isLate             ? 'ต้องระบุเหตุผล'
-                    : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง...'
-                    : gpsState === 'error'   ? 'แก้ไข GPS ก่อน'
-                    : locMode === 'campus'   ? 'วิทยาลัย'
-                    : 'WFH'}
-                </span>
-              </button>
-
-              {/* ลงชื่อออก */}
-              <button
-                onClick={handleCheckout}
-                disabled={loading || !today?.checked_in || !isAfterCheckoutTime()}
-                style={{
-                  flex: 1, padding: '22px 8px', borderRadius: 12,
-                  fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
-                  fontFamily: 'var(--font-heading)',
-                  cursor: today?.checked_in && isAfterCheckoutTime() ? 'pointer' : 'not-allowed',
-                  background: !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
-                    : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue-dim)',
-                  color: !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
-                    : today?.checked_out ? 'var(--ok-text)' : 'var(--blue-text)',
-                  border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out
-                    ? '2px solid rgba(91,142,240,.35)'
-                    : today?.checked_in && isAfterCheckoutTime() && today?.checked_out
-                    ? '1px solid rgba(22,163,74,.3)'
-                    : '1px solid var(--line-mid)',
-                  transition: 'all .15s',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                }}
-              >
-                <span>ลงชื่อออกงาน</span>
-                <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
-                  {today?.checked_out && today.record?.check_out_at
-                    ? fmtTime(today.record.check_out_at)
-                    : `หลัง ${CHECKOUT_AFTER} น.`}
-                </span>
-              </button>
-            </div>
-
-            {/* Footer rule */}
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
-              เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
-            </div>
           </div>
         </div>
 
