@@ -14,19 +14,21 @@ export default async function DashboardPage() {
   if (!session || (session.user.role !== 'admin' && session.user.role !== 'executive')) redirect('/checkin')
 
   const date    = todayDate()
-  const users   = await db.listActiveTeachers()
-  const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
+  const staff   = await db.listAllStaffForPresence()
+  const registeredIds = staff.filter(s => s.is_registered).map(s => s.id)
+  const records = await db.getTodayRecordsForUsers(date, registeredIds)
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
 
   // After 16:30 with no check-in = ขาด; before 16:30 = ยังไม่มา (not yet checked in)
   const hardCutoffPassed = isPastHardAbsentCutoff()
 
-  const rows = (users ?? []).map(u => {
-    const r  = recMap[u.id] ?? null
+  const rows = staff.map(s => {
+    if (!s.is_registered) return { user: s, record: null, effectiveStatus: 'not_registered' }
+    const r  = recMap[s.id] ?? null
     const es = r?.check_in_at
       ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
       : hardCutoffPassed ? 'absent' : 'not_checked'
-    return { user: u, record: r, effectiveStatus: es }
+    return { user: s, record: r, effectiveStatus: es }
   })
 
   const stats = rows.reduce(
@@ -35,7 +37,7 @@ export default async function DashboardPage() {
       if      (es === 'present' || es === 'late')       a.campus++
       else if (es === 'wfh'    || es === 'wfh_late')    a.wfh++
       else if (es === 'absent')                          a.absent++
-      else                                               a.not_checked++
+      else if (es !== 'not_registered')                  a.not_checked++
       if (es === 'late' || es === 'wfh_late')            a.late++
       return a
     },
@@ -79,12 +81,12 @@ export default async function DashboardPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {/* Attendance rate badge */}
           <div style={{
-            padding: '8px 16px', borderRadius: 8,
+            padding: '5px 11px', borderRadius: 8,
             background: attendRate >= 80 ? 'var(--ok-dim)' : attendRate >= 50 ? 'var(--warn-dim)' : 'var(--danger-dim)',
             border: `1px solid ${attendRate >= 80 ? 'rgba(22,163,74,.2)' : attendRate >= 50 ? 'rgba(217,119,6,.2)' : 'rgba(220,38,38,.2)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
           }}>
-            <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1, color: attendRate >= 80 ? 'var(--ok-text)' : attendRate >= 50 ? 'var(--warn-text)' : 'var(--danger-text)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1, color: attendRate >= 80 ? 'var(--ok-text)' : attendRate >= 50 ? 'var(--warn-text)' : 'var(--danger-text)' }}>
               {attendRate}%
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '.05em' }}>อัตราเข้างาน</div>
@@ -219,17 +221,18 @@ export default async function DashboardPage() {
                     {/* Location out */}
                     <td style={{ padding: '10px 14px' }}>
                       {row.record?.check_out_at
-                        ? <LocBadge mode={row.record.location_mode ?? null} />
+                        ? <LocBadge mode={(row.record.check_out_location_mode ?? row.record.location_mode) ?? null} />
                         : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                     </td>
                     {/* Status */}
                     <td style={{ padding: '10px 14px' }}>
-                      {row.effectiveStatus === 'wfh'         && <Chip variant="blue"    label="WFH"       />}
-                      {row.effectiveStatus === 'present'     && <Chip variant="ok"      label="วิทยาลัย"  />}
-                      {row.effectiveStatus === 'late'        && <Chip variant="warn"    label="สาย"       />}
-                      {row.effectiveStatus === 'wfh_late'    && <Chip variant="warn"    label="WFH · สาย" />}
-                      {row.effectiveStatus === 'absent'      && <Chip variant="danger"  label="ขาด"       />}
-                      {row.effectiveStatus === 'not_checked' && <Chip variant="neutral" label="ยังไม่มา"  />}
+                      {row.effectiveStatus === 'wfh'            && <Chip variant="blue"    label="WFH"              />}
+                      {row.effectiveStatus === 'present'        && <Chip variant="ok"      label="วิทยาลัย"         />}
+                      {row.effectiveStatus === 'late'           && <Chip variant="warn"    label="สาย"              />}
+                      {row.effectiveStatus === 'wfh_late'       && <Chip variant="warn"    label="WFH · สาย"        />}
+                      {row.effectiveStatus === 'absent'         && <Chip variant="danger"  label="ขาด"              />}
+                      {row.effectiveStatus === 'not_checked'    && <Chip variant="neutral" label="ยังไม่มา"         />}
+                      {row.effectiveStatus === 'not_registered' && <Chip variant="neutral" label="ยังไม่ลงทะเบียน" />}
                     </td>
                   </tr>
                 ))}
@@ -257,7 +260,7 @@ export default async function DashboardPage() {
 
           <div style={{ padding: '8px 0' }}>
             {recentLogs.map((r, i) => {
-              const user = users.find(u => u.id === r.user_id)
+              const user = staff.find(u => u.id === r.user_id)
               const isWfh     = r.location_mode === 'wfh'
               const isLate    = r.status === 'late'
               const isWfhLate = isWfh && isLate

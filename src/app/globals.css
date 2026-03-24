@@ -227,13 +227,17 @@ input:focus, select:focus, textarea:focus {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Presence board desktop/mobile toggle */
+.presence-board-desktop { display: block; }
+.presence-board-mobile  { display: none; }
+
 @media (max-width: 900px) {
   .presence-grid {
     grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   }
 }
 
-/* Medium mobile: pills → 3 columns */
+/* Medium mobile: pills → 3 columns, swap table for card list */
 @media (max-width: 720px) {
   .presence-stats-grid {
     grid-template-columns: repeat(3, 1fr) !important;
@@ -249,6 +253,8 @@ input:focus, select:focus, textarea:focus {
   .presence-export-wrap {
     flex-wrap: wrap;
   }
+  .presence-board-desktop { display: none; }
+  .presence-board-mobile  { display: block; }
 }
 
 @media (max-width: 600px) {

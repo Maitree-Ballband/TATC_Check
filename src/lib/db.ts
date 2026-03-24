@@ -154,6 +154,36 @@ export async function listActiveTeachersForExport(dept?: string | null) {
   return data ?? []
 }
 
+export async function listAllStaffForPresence(): Promise<{
+  id: string
+  national_id: string
+  full_name_th: string
+  department: string | null
+  avatar_url: string | null
+  is_registered: boolean
+}[]> {
+  const [whitelist, users] = await Promise.all([
+    client().from('staff_whitelist').select('national_id, full_name_th').order('full_name_th'),
+    client().from('users').select('id, national_id, full_name_th, department, avatar_url')
+      .eq('is_active', true).eq('is_pending', false),
+  ])
+  const userMap = new Map<string, { id: string; department: string | null; avatar_url: string | null }>()
+  for (const u of (users.data ?? [])) {
+    if (u.national_id) userMap.set(u.national_id, { id: u.id, department: u.department, avatar_url: u.avatar_url })
+  }
+  return (whitelist.data ?? []).map(w => {
+    const u = userMap.get(w.national_id)
+    return {
+      id:            u ? u.id : w.national_id,
+      national_id:   w.national_id,
+      full_name_th:  w.full_name_th,
+      department:    u?.department ?? null,
+      avatar_url:    u?.avatar_url ?? null,
+      is_registered: !!u,
+    }
+  })
+}
+
 // ─── Staff whitelist queries ───────────────────────────────────────────────────
 
 /** ตรวจสอบว่า national_id + full_name_th ตรงคู่กันใน whitelist */
@@ -218,10 +248,10 @@ export async function upsertCheckIn(payload: {
   return data as AttendanceRecord
 }
 
-export async function updateCheckOut(recordId: string, checkOutAt: string) {
+export async function updateCheckOut(recordId: string, checkOutAt: string, locationMode: string) {
   const { data, error } = await client()
     .from('attendance_records')
-    .update({ check_out_at: checkOutAt })
+    .update({ check_out_at: checkOutAt, check_out_location_mode: locationMode })
     .eq('id', recordId)
     .select()
     .single()

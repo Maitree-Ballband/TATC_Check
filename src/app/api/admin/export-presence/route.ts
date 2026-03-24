@@ -55,16 +55,19 @@ export async function GET(req: NextRequest) {
     const es = r?.check_in_at
       ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
       : hardCutoff ? 'absent' : 'not_checked'
-    const locLabel = r?.location_mode === 'wfh' ? 'WFH' : r?.location_mode === 'campus' ? 'วิทยาลัย' : ''
+    const locInLabel  = r?.location_mode === 'wfh' ? 'WFH' : r?.location_mode === 'campus' ? 'วิทยาลัย' : ''
+    const locOutLabel = r?.check_out_location_mode === 'wfh' ? 'WFH'
+      : r?.check_out_location_mode === 'campus' ? 'วิทยาลัย'
+      : locInLabel  // fallback to check-in location for legacy records
 
     ws.addRow({
       no:       i + 1,
       name:     u.full_name_th,
       dept:     u.department ?? '',
       checkIn:  r?.check_in_at  ? fmtTime(r.check_in_at)  : '',
-      locIn:    r?.check_in_at  ? locLabel : '',
+      locIn:    r?.check_in_at  ? locInLabel : '',
       checkOut: r?.check_out_at ? fmtTime(r.check_out_at) : '',
-      locOut:   r?.check_out_at ? locLabel : '',
+      locOut:   r?.check_out_at ? locOutLabel : '',
       status:   STATUS_LABEL[es as string] ?? (es as string),
     })
   })

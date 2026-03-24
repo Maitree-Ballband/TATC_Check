@@ -24,31 +24,34 @@ export default async function PresencePage({ searchParams }: Props) {
   const date    = searchParams.date ?? today
   const isToday = date === today
 
-  const users   = await db.listActiveTeachers()
-  const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
+  const staff   = await db.listAllStaffForPresence()
+  const registeredIds = staff.filter(s => s.is_registered).map(s => s.id)
+  const records = await db.getTodayRecordsForUsers(date, registeredIds)
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
 
   const hardCutoffPassed = !isToday || isPastHardAbsentCutoff()
 
-  const rows = users.map(u => {
-    const r  = recMap[u.id] ?? null
+  const rows = staff.map(s => {
+    if (!s.is_registered) return { user: s, record: null, effectiveStatus: 'not_registered' }
+    const r  = recMap[s.id] ?? null
     const es = r?.check_in_at
       ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
       : hardCutoffPassed ? 'absent' : 'not_checked'
-    return { user: u, record: r, effectiveStatus: es }
+    return { user: s, record: r, effectiveStatus: es }
   })
 
   const counts = rows.reduce(
     (a, r) => {
-      if      (r.effectiveStatus === 'present')   a.present++
-      else if (r.effectiveStatus === 'late')       a.late++
-      else if (r.effectiveStatus === 'wfh')        a.wfh++
-      else if (r.effectiveStatus === 'wfh_late')   a.wfh_late++
-      else if (r.effectiveStatus === 'absent')     a.absent++
-      else                                         a.not_checked++
+      if      (r.effectiveStatus === 'present')        a.present++
+      else if (r.effectiveStatus === 'late')            a.late++
+      else if (r.effectiveStatus === 'wfh')             a.wfh++
+      else if (r.effectiveStatus === 'wfh_late')        a.wfh_late++
+      else if (r.effectiveStatus === 'absent')          a.absent++
+      else if (r.effectiveStatus === 'not_registered')  a.not_registered++
+      else                                              a.not_checked++
       return a
     },
-    { present: 0, late: 0, wfh: 0, wfh_late: 0, absent: 0, not_checked: 0 }
+    { present: 0, late: 0, wfh: 0, wfh_late: 0, absent: 0, not_checked: 0, not_registered: 0 }
   )
   const notPresentCount = hardCutoffPassed ? counts.absent : counts.not_checked
 
@@ -68,6 +71,7 @@ export default async function PresencePage({ searchParams }: Props) {
     dept:            r.user.department ?? null,
     effectiveStatus: r.effectiveStatus,
     locMode:         (r.record?.location_mode ?? null) as 'campus' | 'wfh' | null,
+    locOutMode:      (r.record?.check_out_location_mode ?? r.record?.location_mode ?? null) as 'campus' | 'wfh' | null,
     checkIn: r.record?.check_in_at
       ? new Date(r.record.check_in_at).toLocaleTimeString('th-TH', {
           timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
@@ -107,15 +111,15 @@ export default async function PresencePage({ searchParams }: Props) {
 
           {/* Attendance rate */}
           <div style={{
-            padding: '10px 18px', borderRadius: 10,
+            padding: '5px 11px', borderRadius: 8,
             background: attendRate >= 80 ? 'var(--ok-dim)' : attendRate >= 50 ? 'var(--warn-dim)' : 'var(--danger-dim)',
             border: `1px solid ${attendRate >= 80 ? 'rgba(22,163,74,.25)' : attendRate >= 50 ? 'rgba(217,119,6,.25)' : 'rgba(220,38,38,.25)'}`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
           }}>
-            <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1, color: attendRate >= 80 ? 'var(--ok-text)' : attendRate >= 50 ? 'var(--warn-text)' : 'var(--danger-text)' }}>
+            <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1, color: attendRate >= 80 ? 'var(--ok-text)' : attendRate >= 50 ? 'var(--warn-text)' : 'var(--danger-text)' }}>
               {attendRate}%
             </div>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', letterSpacing: '.05em' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '.05em' }}>
               {isToday ? 'เข้างานวันนี้' : 'เข้างานวันนั้น'}
             </div>
           </div>

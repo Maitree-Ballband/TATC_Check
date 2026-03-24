@@ -171,11 +171,15 @@ export default function CheckinPage() {
       return
     }
     setLoading(true)
-    const res = await fetch('/api/attendance/checkout', { method: 'POST' })
+    const res = await fetch('/api/attendance/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location_mode: locMode }),
+    })
     setLoading(false)
     if (res.ok) {
       const time  = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
-      const place = today.record?.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย'
+      const place = locMode === 'wfh' ? 'WFH' : 'วิทยาลัย'
       showToast(`ลงชื่อออกงานสำเร็จ — ${place} · ${time} น.`, 'ok')
       fetchToday()
     }
@@ -534,8 +538,8 @@ export default function CheckinPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    {['วันที่', 'สถานที่', 'เข้างาน', 'ออกงาน', 'สถานะ'].map(h => (
-                      <th key={h} style={{ padding: '10px 14px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-body)', letterSpacing: '.03em' }}>
+                    {['วันที่', 'เข้างาน', 'สถานที่', 'ออกงาน', 'สถานที่'].map((h, i) => (
+                      <th key={i} style={{ padding: '10px 14px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-body)', letterSpacing: '.03em' }}>
                         {h}
                       </th>
                     ))}
@@ -554,18 +558,17 @@ export default function CheckinPage() {
                       <td style={{ padding: '11px 14px', fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
                         {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: '2-digit', month: 'short' })}
                       </td>
-                      <td style={{ padding: '11px 14px' }}>
-                        <LocBadge mode={r.location_mode} />
-                      </td>
                       <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
                         {r.check_in_at  ? fmtTime(r.check_in_at)  : '—'}
+                      </td>
+                      <td style={{ padding: '11px 14px' }}>
+                        {r.check_in_at ? <LocBadge mode={r.location_mode} /> : null}
                       </td>
                       <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
                         {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
                       </td>
                       <td style={{ padding: '11px 14px' }}>
-                        {r.status === 'present' && <Chip variant="ok"   label="วิทยาลัย" />}
-                        {r.status === 'late'    && <Chip variant="warn" label="สาย" />}
+                        {r.check_out_at ? <LocBadge mode={r.check_out_location_mode ?? r.location_mode} /> : null}
                       </td>
                     </tr>
                   ))}
@@ -581,23 +584,25 @@ export default function CheckinPage() {
                 </div>
               )}
               {history.map(r => (
-                <div key={r.id} style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-body)' }}>
-                      {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: 'numeric', month: 'short' })}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <LocBadge mode={r.location_mode} />
-                      <span style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                        {r.check_in_at  ? new Date(r.check_in_at).toLocaleTimeString('th-TH',  { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
-                        {' → '}
-                        {r.check_out_at ? new Date(r.check_out_at).toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
-                      </span>
-                    </div>
+                <div key={r.id} style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-body)', marginBottom: 6 }}>
+                    {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: 'numeric', month: 'short' })}
                   </div>
-                  <div style={{ flexShrink: 0 }}>
-                    {r.status === 'present' && <Chip variant="ok"   label="วิทยาลัย" />}
-                    {r.status === 'late'    && <Chip variant="warn" label="สาย" />}
+                  <div style={{ display: 'flex', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>เข้า</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
+                        {r.check_in_at ? fmtTime(r.check_in_at) : '—'}
+                      </span>
+                      {r.check_in_at && <LocBadge mode={r.location_mode} />}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>ออก</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
+                        {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
+                      </span>
+                      {r.check_out_at && <LocBadge mode={r.check_out_location_mode ?? r.location_mode} />}
+                    </div>
                   </div>
                 </div>
               ))}

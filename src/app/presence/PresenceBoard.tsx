@@ -7,6 +7,7 @@ export type BoardRow = {
   dept:            string | null
   effectiveStatus: string
   locMode:         'campus' | 'wfh' | null
+  locOutMode:      'campus' | 'wfh' | null
   checkIn:         string | null
   checkOut:        string | null
   lateReason:      string | null
@@ -17,26 +18,27 @@ export type BoardRow = {
 interface Props {
   rows:             BoardRow[]
   hardCutoffPassed: boolean
-  counts:           { present: number; late: number; wfh: number; wfh_late: number; absent: number; not_checked: number }
+  counts:           { present: number; late: number; wfh: number; wfh_late: number; absent: number; not_checked: number; not_registered: number }
   total:            number
   notPresentCount:  number
   date:             string
 }
 
-type FilterKey = 'present' | 'late' | 'wfh' | 'wfh_late' | 'absent' | null
+type FilterKey = 'present' | 'late' | 'wfh' | 'wfh_late' | 'absent' | 'not_registered' | null
 
 // ── Status display config ─────────────────────────────────────
 const STATUS_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  present:     { bg: 'var(--ok-dim)',      text: 'var(--ok-text)',      border: 'rgba(22,163,74,.2)',  dot: 'var(--ok)'      },
-  wfh:         { bg: 'var(--blue-dim)',    text: 'var(--blue-text)',    border: 'rgba(37,99,235,.2)',  dot: 'var(--blue)'    },
-  late:        { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',    border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
-  wfh_late:    { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',    border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
-  absent:      { bg: 'var(--danger-dim)',  text: 'var(--danger-text)',  border: 'rgba(220,38,38,.2)',  dot: 'var(--danger)'  },
-  not_checked: { bg: 'var(--neutral-dim)', text: 'var(--text-secondary)', border: 'var(--line)',      dot: 'var(--line-mid)' },
+  present:        { bg: 'var(--ok-dim)',      text: 'var(--ok-text)',        border: 'rgba(22,163,74,.2)',  dot: 'var(--ok)'      },
+  wfh:            { bg: 'var(--blue-dim)',    text: 'var(--blue-text)',      border: 'rgba(37,99,235,.2)',  dot: 'var(--blue)'    },
+  late:           { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
+  wfh_late:       { bg: 'var(--warn-dim)',    text: 'var(--warn-text)',      border: 'rgba(217,119,6,.2)',  dot: 'var(--warn)'    },
+  absent:         { bg: 'var(--danger-dim)',  text: 'var(--danger-text)',    border: 'rgba(220,38,38,.2)',  dot: 'var(--danger)'  },
+  not_checked:    { bg: 'var(--neutral-dim)', text: 'var(--text-secondary)', border: 'var(--line)',         dot: 'var(--line-mid)' },
+  not_registered: { bg: 'var(--bg-active)',   text: 'var(--text-muted)',     border: 'var(--line-mid)',     dot: 'var(--line-mid)' },
 }
 const STATUS_LABEL: Record<string, string> = {
   present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'สาย',
-  absent: 'ขาด', not_checked: 'ยังไม่มา',
+  absent: 'ขาด', not_checked: 'ยังไม่มา', not_registered: 'ยังไม่ลงทะเบียน',
 }
 
 // ── Icons ─────────────────────────────────────────────────────
@@ -78,12 +80,13 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
   // Filter logic
   const matchesFilter = (es: string): boolean => {
-    if (filter === null)           return true
-    if (filter === 'present')      return es === 'present'
-    if (filter === 'late')         return es === 'late'
-    if (filter === 'wfh')          return es === 'wfh'
-    if (filter === 'wfh_late')     return es === 'wfh_late'
-    if (filter === 'absent')       return es === 'absent' || es === 'not_checked'
+    if (filter === null)               return true
+    if (filter === 'present')          return es === 'present'
+    if (filter === 'late')             return es === 'late'
+    if (filter === 'wfh')              return es === 'wfh'
+    if (filter === 'wfh_late')         return es === 'wfh_late'
+    if (filter === 'absent')           return es === 'absent' || es === 'not_checked'
+    if (filter === 'not_registered')   return es === 'not_registered'
     return true
   }
 
@@ -95,10 +98,10 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
   // Summary pills
   const pills = [
-    { key: 'present'  as FilterKey, label: 'วิทยาลัย', sub: 'ตรงเวลา', n: counts.present,   color: 'var(--ok-text)',   bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'  },
-    { key: 'late'     as FilterKey, label: 'วิทยาลัย', sub: 'สาย',     n: counts.late,      color: 'var(--warn-text)', bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'  },
-    { key: 'wfh'      as FilterKey, label: 'WFH',      sub: 'ตรงเวลา', n: counts.wfh,       color: 'var(--blue-text)', bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'  },
-    { key: 'wfh_late' as FilterKey, label: 'WFH',      sub: 'สาย',     n: counts.wfh_late,  color: 'var(--warn-text)', bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'  },
+    { key: 'present'        as FilterKey, label: 'วิทยาลัย',           sub: 'ตรงเวลา', n: counts.present,        color: 'var(--ok-text)',    bg: 'var(--ok-dim)',      activeBorder: 'rgba(22,163,74,.4)'   },
+    { key: 'late'           as FilterKey, label: 'วิทยาลัย',           sub: 'สาย',     n: counts.late,           color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
+    { key: 'wfh'            as FilterKey, label: 'WFH',                 sub: 'ตรงเวลา', n: counts.wfh,            color: 'var(--blue-text)',  bg: 'var(--blue-dim)',    activeBorder: 'rgba(37,99,235,.4)'   },
+    { key: 'wfh_late'       as FilterKey, label: 'WFH',                 sub: 'สาย',     n: counts.wfh_late,       color: 'var(--warn-text)',  bg: 'var(--warn-dim)',    activeBorder: 'rgba(217,119,6,.4)'   },
     {
       key:   'absent' as FilterKey,
       label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา',
@@ -108,6 +111,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
       bg:    hardCutoffPassed ? 'var(--danger-dim)'  : 'var(--neutral-dim)',
       activeBorder: hardCutoffPassed ? 'rgba(220,38,38,.4)' : 'rgba(107,114,128,.4)',
     },
+    { key: 'not_registered' as FilterKey, label: 'ยังไม่ลงทะเบียน',   sub: '',        n: counts.not_registered, color: 'var(--text-muted)', bg: 'var(--bg-active)',   activeBorder: 'rgba(107,114,128,.4)' },
   ]
 
   return (
@@ -118,7 +122,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         borderRadius: 12, padding: '14px 16px', marginBottom: 14,
         boxShadow: '0 1px 4px rgba(30,36,51,.05)',
       }}>
-        <div className="presence-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 1 }}>
+        <div className="presence-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 1 }}>
           {pills.map((p, idx) => {
             const isActive = filter === p.key
             return (
@@ -127,8 +131,8 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                 onClick={() => toggleFilter(p.key)}
                 style={{
                   textAlign: 'center', padding: '10px 8px', cursor: 'pointer',
-                  borderRight: idx < 4 ? '1px solid var(--line)' : 'none',
-                  borderRadius: idx === 0 ? '8px 0 0 8px' : idx === 4 ? '0 8px 8px 0' : 'none',
+                  borderRight: idx < 5 ? '1px solid var(--line)' : 'none',
+                  borderRadius: idx === 0 ? '8px 0 0 8px' : idx === 5 ? '0 8px 8px 0' : 'none',
                   background: isActive ? p.bg : 'transparent',
                   outline: isActive ? `2px solid ${p.activeBorder}` : 'none',
                   outlineOffset: -1, transition: 'background .15s', userSelect: 'none',
@@ -175,12 +179,13 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
       {/* ── Filter bar + Export Excel ───────────────────────────── */}
       <div className="presence-filter-bar" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         {(([
-          { key: null,        label: 'ทั้งหมด',                              count: total,             color: 'var(--accent)' },
-          { key: 'present',   label: 'วิทยาลัย ตรงเวลา',                    count: counts.present,    color: 'var(--ok)'     },
-          { key: 'late',      label: 'วิทยาลัย สาย',                        count: counts.late,       color: 'var(--warn)'   },
-          { key: 'wfh',       label: 'WFH',                                  count: counts.wfh,        color: 'var(--blue)'   },
-          { key: 'wfh_late',  label: 'WFH สาย',                             count: counts.wfh_late,   color: 'var(--warn)'   },
-          { key: 'absent',    label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา', count: notPresentCount,   color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
+          { key: null,              label: 'ทั้งหมด',                              count: total,                   color: 'var(--accent)' },
+          { key: 'present',         label: 'วิทยาลัย ตรงเวลา',                    count: counts.present,          color: 'var(--ok)'     },
+          { key: 'late',            label: 'วิทยาลัย สาย',                        count: counts.late,             color: 'var(--warn)'   },
+          { key: 'wfh',             label: 'WFH',                                  count: counts.wfh,              color: 'var(--blue)'   },
+          { key: 'wfh_late',        label: 'WFH สาย',                             count: counts.wfh_late,         color: 'var(--warn)'   },
+          { key: 'absent',          label: hardCutoffPassed ? 'ขาด' : 'ยังไม่มา', count: notPresentCount,         color: hardCutoffPassed ? 'var(--danger)' : 'var(--neutral)' },
+          { key: 'not_registered',  label: 'ยังไม่ลงทะเบียน',                    count: counts.not_registered,   color: 'var(--neutral)' },
         ] as { key: FilterKey; label: string; count: number; color: string }[])).map(btn => {
           const isActive = filter === btn.key
           return (
@@ -242,8 +247,8 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
       </div>
 
-      {/* ── Horizontal list ────────────────────────────────────── */}
-      <div style={{
+      {/* ── Desktop table ──────────────────────────────────────── */}
+      <div className="presence-board-desktop" style={{
         background: 'var(--bg-surface)', border: '1px solid var(--line)',
         borderRadius: 12, overflow: 'hidden',
         boxShadow: '0 1px 4px rgba(30,36,51,.04)',
@@ -282,8 +287,8 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
 
         {visibleRows.map((row, idx) => {
           const sc = STATUS_COLOR[row.effectiveStatus] ?? STATUS_COLOR.not_checked
-          const locInMode  = row.checkIn  ? row.locMode : null
-          const locOutMode = row.checkOut ? row.locMode : null
+          const locInMode  = row.checkIn  ? row.locMode    : null
+          const locOutMode = row.checkOut ? row.locOutMode : null
           return (
             <div
               key={row.userId}
@@ -366,6 +371,84 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         })}
       </div>{/* /presence-table-wrap */}
       </div>{/* /table outer */}
+
+      {/* ── Mobile card list ────────────────────────────────────── */}
+      <div className="presence-board-mobile" style={{
+        background: 'var(--bg-surface)', border: '1px solid var(--line)',
+        borderRadius: 12, overflow: 'hidden',
+        boxShadow: '0 1px 4px rgba(30,36,51,.04)',
+      }}>
+        {visibleRows.length === 0 && (
+          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+            ไม่มีข้อมูลในกลุ่มที่เลือก
+          </div>
+        )}
+        {visibleRows.map((row, idx) => {
+          const sc = STATUS_COLOR[row.effectiveStatus] ?? STATUS_COLOR.not_checked
+          return (
+            <div key={row.userId} style={{
+              padding: '12px 14px',
+              borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--line)' : 'none',
+              borderLeft: `3px solid ${sc.dot}`,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              {/* Avatar */}
+              {row.avatarUrl
+                ? <img src={row.avatarUrl} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1.5px solid ${sc.border}` }} />
+                : <div style={{
+                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    background: sc.bg, border: `1.5px solid ${sc.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: sc.text,
+                  }}>
+                    {row.initials}
+                  </div>
+              }
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                  {row.name}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                  {row.dept ?? '—'}
+                </div>
+                {row.effectiveStatus !== 'not_registered' && (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>เข้า</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: row.checkIn ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                        {row.checkIn ?? '—'}
+                      </span>
+                      {row.checkIn && <LocPill mode={row.locMode} />}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>ออก</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: row.checkOut ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
+                        {row.checkOut ?? '—'}
+                      </span>
+                      {row.checkOut && <LocPill mode={row.locOutMode} />}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Status chip */}
+              <div style={{ flexShrink: 0 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '3px 8px', borderRadius: 99,
+                  fontSize: 11, fontWeight: 700,
+                  background: sc.bg, color: sc.text,
+                  border: `1px solid ${sc.border}`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
+                  {STATUS_LABEL[row.effectiveStatus] ?? row.effectiveStatus}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
       {/* Row count */}
       {visibleRows.length > 0 && (

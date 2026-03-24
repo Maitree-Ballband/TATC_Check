@@ -35,6 +35,7 @@ export interface AttendanceRecord {
   status: StoredAttendanceStatus      // only 'present' | 'late' — never 'absent' in DB
   selfie_url: string | null
   late_reason: string | null          // set when checked in after noon cutoff
+  check_out_location_mode: LocationMode | null  // null for legacy records
   created_at: string
   updated_at: string                  // auto-updated by DB trigger on checkout
 }

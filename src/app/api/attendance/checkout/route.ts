@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
 import { todayDate, currentTimeMinutes } from '@/lib/attendance'
 
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,8 +24,11 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'too_early', available_after: cutoff }, { status: 422 })
   }
 
+  const body         = await req.json().catch(() => ({}))
+  const locationMode = body?.location_mode === 'campus' ? 'campus' : 'wfh'
+
   try {
-    const record = await db.updateCheckOut(existing.id, new Date().toISOString())
+    const record = await db.updateCheckOut(existing.id, new Date().toISOString(), locationMode)
     return NextResponse.json({ record, checked_out_at: record.check_out_at })
   } catch (err) {
     console.error('[checkout]', err)
