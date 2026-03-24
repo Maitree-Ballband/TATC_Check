@@ -407,6 +407,29 @@ export default function CheckinPage() {
             </div>
           </div>
 
+          {/* Profile row */}
+          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {session?.user?.image
+                ? <img src={session.user.image} alt="" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--line)' }} />
+                : <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                    {session?.user?.nameTh?.slice(0, 2) ?? '??'}
+                  </div>
+              }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {session?.user?.nameTh}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginTop: 1 }}>
+                  {session?.user?.dept ?? 'ไม่ระบุแผนก'}
+                </div>
+              </div>
+              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                {statusChip()}
+              </div>
+            </div>
+          </div>
+
           {/* Action buttons */}
           <div style={{ padding: '20px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="checkin-btns" style={{ display: 'flex', gap: 10 }}>
@@ -477,56 +500,6 @@ export default function CheckinPage() {
             <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
               เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
             </div>
-          </div>
-
-          {/* Profile row */}
-          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {session?.user?.image
-                ? <img src={session.user.image} alt="" style={{ width: 46, height: 46, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--line)' }} />
-                : <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--bg-active)', border: '1px solid var(--line-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
-                    {session?.user?.nameTh?.slice(0, 2) ?? '??'}
-                  </div>
-              }
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {session?.user?.nameTh}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', marginTop: 1 }}>
-                  {session?.user?.dept ?? 'ไม่ระบุแผนก'}
-                </div>
-              </div>
-              <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                {statusChip()}
-              </div>
-            </div>
-
-            {/* Today summary (shown after check-in) */}
-            {today?.checked_in && today.record && (
-              <div style={{ background: 'var(--bg-raised)', border: '1px solid var(--line)', borderRadius: 8, padding: '10px 14px', marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                {[
-                  { label: 'ลงชื่อเข้า',  val: today.record.check_in_at  ? fmtTime(today.record.check_in_at)  : '—' },
-                  { label: 'ลงชื่อออก',  val: today.record.check_out_at ? fmtTime(today.record.check_out_at) : '—' },
-                  { label: 'สถานที่',     val: today.record.location_mode === 'wfh' ? 'WFH' : 'วิทยาลัย' },
-                ].map(f => (
-                  <div key={f.label}>
-                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 3 }}>
-                      {f.label}
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                      {f.val}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Late reason (shown when record has one) */}
-            {today?.record?.late_reason && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.2)', borderRadius: 8, fontSize: 13, color: 'var(--warn-text)', fontFamily: 'var(--font-body)' }}>
-                <span style={{ fontWeight: 600 }}>เหตุผลที่มาสาย: </span>{today.record.late_reason}
-              </div>
-            )}
           </div>
         </div>
 
