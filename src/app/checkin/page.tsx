@@ -224,13 +224,13 @@ export default function CheckinPage() {
 
   // Check-in button appearance
   const checkinBtnDisabled = loading || !!today?.checked_in || isAbsent || gpsState === 'loading' || gpsState === 'error'
-  const checkinBtnBg = today?.checked_in  ? 'var(--bg-active)'
+  const checkinBtnBg = today?.checked_in  ? 'var(--ok-dim)'
     : isAbsent                            ? 'var(--danger-dim)'
     : gpsState === 'error'                ? 'var(--danger-dim)'
     : isLate                              ? 'var(--warn-dim)'
     : gpsState === 'loading'              ? 'var(--bg-raised)'
     : 'var(--ok)'
-  const checkinBtnColor = today?.checked_in ? 'var(--text-muted)'
+  const checkinBtnColor = today?.checked_in ? 'var(--ok-text)'
     : isAbsent                              ? 'var(--danger-text)'
     : gpsState === 'error'                  ? 'var(--danger-text)'
     : isLate                                ? 'var(--warn-text)'
@@ -417,7 +417,8 @@ export default function CheckinPage() {
                 disabled={checkinBtnDisabled}
                 style={{
                   flex: 1, padding: '22px 8px', borderRadius: 12,
-                  border: (!today?.checked_in && !isAbsent && !isLate && gpsState === 'ok') ? '2px solid var(--ok-text)' : 'none',
+                  border: today?.checked_in ? '1px solid rgba(22,163,74,.3)'
+                    : (!isAbsent && !isLate && gpsState === 'ok') ? '2px solid var(--ok-text)' : 'none',
                   fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
                   fontFamily: 'var(--font-heading)',
                   cursor: checkinBtnDisabled ? 'not-allowed' : 'pointer',
@@ -451,11 +452,11 @@ export default function CheckinPage() {
                   fontFamily: 'var(--font-heading)',
                   cursor: today?.checked_in && isAfterCheckoutTime() ? 'pointer' : 'not-allowed',
                   background: !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
-                    : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue-dim)',
+                    : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue)',
                   color: !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
-                    : today?.checked_out ? 'var(--ok-text)' : 'var(--blue-text)',
+                    : today?.checked_out ? 'var(--ok-text)' : '#fff',
                   border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out
-                    ? '2px solid rgba(91,142,240,.35)'
+                    ? '2px solid var(--blue-text)'
                     : today?.checked_in && isAfterCheckoutTime() && today?.checked_out
                     ? '1px solid rgba(22,163,74,.3)'
                     : '1px solid var(--line-mid)',
@@ -463,7 +464,7 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span>{today?.checked_out ? 'ลงชื่อออกสำเร็จ' : today?.checked_in && isAfterCheckoutTime() ? 'กดลงชื่อออกงาน' : 'ลงชื่อออกงาน'}</span>
+                <span>{today?.checked_out ? 'ลงชื่อออกสำเร็จ' : 'กดลงชื่อออกงาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85 }}>
                   {today?.checked_out && today.record?.check_out_at
                     ? fmtTime(today.record.check_out_at)
