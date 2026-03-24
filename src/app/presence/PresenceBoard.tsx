@@ -73,6 +73,8 @@ function LocPill({ mode }: { mode: 'campus' | 'wfh' | null }) {
 export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresentCount, date }: Props) {
   const [filter, setFilter] = useState<FilterKey>(null)
   const [search, setSearch] = useState('')
+  const [locInFilter,  setLocInFilter]  = useState<'campus' | 'wfh' | null>(null)
+  const [locOutFilter, setLocOutFilter] = useState<'campus' | 'wfh' | null>(null)
 
   function toggleFilter(key: FilterKey) {
     setFilter(f => f === key ? null : key)
@@ -90,11 +92,20 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
     return true
   }
 
+  const statusFilteredRows = rows.filter(r => matchesFilter(r.effectiveStatus))
+  const locInCampus  = statusFilteredRows.filter(r => r.checkIn  && r.locMode    === 'campus').length
+  const locInWfh     = statusFilteredRows.filter(r => r.checkIn  && r.locMode    === 'wfh').length
+  const locOutCampus = statusFilteredRows.filter(r => r.checkOut && r.locOutMode === 'campus').length
+  const locOutWfh    = statusFilteredRows.filter(r => r.checkOut && r.locOutMode === 'wfh').length
+
   const q = search.trim().toLowerCase()
-  const visibleRows = rows.filter(r =>
-    matchesFilter(r.effectiveStatus) &&
-    (!q || r.name.toLowerCase().includes(q) || (r.dept ?? '').toLowerCase().includes(q))
-  )
+  const visibleRows = rows.filter(r => {
+    if (!matchesFilter(r.effectiveStatus)) return false
+    if (q && !r.name.toLowerCase().includes(q) && !(r.dept ?? '').toLowerCase().includes(q)) return false
+    if (locInFilter  !== null && (r.checkIn  ? r.locMode    : null) !== locInFilter)  return false
+    if (locOutFilter !== null && (r.checkOut ? r.locOutMode : null) !== locOutFilter) return false
+    return true
+  })
 
   // Summary pills
   const pills = [
@@ -214,9 +225,9 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             </button>
           )
         })}
-        {filter !== null && (
+        {(filter !== null || locInFilter !== null || locOutFilter !== null) && (
           <button
-            onClick={() => setFilter(null)}
+            onClick={() => { setFilter(null); setLocInFilter(null); setLocOutFilter(null) }}
             style={{
               padding: '6px 12px', borderRadius: 99, fontSize: 12,
               border: '1.5px solid var(--line-mid)', background: 'transparent',
@@ -244,6 +255,65 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             <ExcelIcon />
             Export Excel
           </button>
+        </div>
+      </div>
+
+      {/* ── Location filters ─────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Check-in location */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.04em' }}>สถานที่เข้า</span>
+          {([
+            { key: null     as 'campus'|'wfh'|null, label: 'ทั้งหมด',  count: locInCampus + locInWfh, color: 'var(--accent)' },
+            { key: 'campus' as 'campus'|'wfh'|null, label: 'วิทยาลัย', count: locInCampus,             color: 'var(--ok)'    },
+            { key: 'wfh'    as 'campus'|'wfh'|null, label: 'WFH',       count: locInWfh,               color: 'var(--blue)'  },
+          ]).map(btn => {
+            const isActive = locInFilter === btn.key
+            return (
+              <button key={String(btn.key)} onClick={() => setLocInFilter(f => f === btn.key ? null : btn.key)}
+                style={{
+                  padding: '4px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                  border: `1.5px solid ${isActive ? btn.color : 'var(--line-mid)'}`,
+                  background: isActive ? btn.color : 'var(--bg-surface)',
+                  color: isActive ? '#fff' : 'var(--text-secondary)',
+                  cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
+                  transition: 'all .15s', whiteSpace: 'nowrap',
+                }}
+              >
+                {btn.label}
+                <span style={{ marginLeft: 5, fontSize: 10.5, fontWeight: 700, opacity: isActive ? 0.85 : 0.6, background: isActive ? 'rgba(255,255,255,.2)' : 'var(--bg-active)', color: isActive ? 'inherit' : 'var(--text-muted)', padding: '1px 5px', borderRadius: 99 }}>{btn.count}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div style={{ width: 1, height: 20, background: 'var(--line-mid)', alignSelf: 'center' }} />
+
+        {/* Check-out location */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', letterSpacing: '.04em' }}>สถานที่ออก</span>
+          {([
+            { key: null     as 'campus'|'wfh'|null, label: 'ทั้งหมด',  count: locOutCampus + locOutWfh, color: 'var(--accent)' },
+            { key: 'campus' as 'campus'|'wfh'|null, label: 'วิทยาลัย', count: locOutCampus,              color: 'var(--ok)'    },
+            { key: 'wfh'    as 'campus'|'wfh'|null, label: 'WFH',       count: locOutWfh,                color: 'var(--blue)'  },
+          ]).map(btn => {
+            const isActive = locOutFilter === btn.key
+            return (
+              <button key={String(btn.key)} onClick={() => setLocOutFilter(f => f === btn.key ? null : btn.key)}
+                style={{
+                  padding: '4px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600,
+                  border: `1.5px solid ${isActive ? btn.color : 'var(--line-mid)'}`,
+                  background: isActive ? btn.color : 'var(--bg-surface)',
+                  color: isActive ? '#fff' : 'var(--text-secondary)',
+                  cursor: 'pointer', fontFamily: "'Sarabun', sans-serif",
+                  transition: 'all .15s', whiteSpace: 'nowrap',
+                }}
+              >
+                {btn.label}
+                <span style={{ marginLeft: 5, fontSize: 10.5, fontWeight: 700, opacity: isActive ? 0.85 : 0.6, background: isActive ? 'rgba(255,255,255,.2)' : 'var(--bg-active)', color: isActive ? 'inherit' : 'var(--text-muted)', padding: '1px 5px', borderRadius: 99 }}>{btn.count}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
