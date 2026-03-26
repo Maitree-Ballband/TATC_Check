@@ -37,6 +37,16 @@ export async function GET(req: NextRequest) {
 
   const hardCutoff = isPastHardAbsentCutoff()
 
+  // Sort: checked-in first (earliest → latest), then the rest by name
+  const sortedStaff = [...staff].sort((a, b) => {
+    const ta = a.is_registered ? (recMap[a.id]?.check_in_at ?? '') : ''
+    const tb = b.is_registered ? (recMap[b.id]?.check_in_at ?? '') : ''
+    if (ta && tb) return ta < tb ? -1 : ta > tb ? 1 : 0
+    if (ta) return -1
+    if (tb) return 1
+    return 0
+  })
+
   const wb = new ExcelJS.Workbook()
   wb.creator = 'TOAS'
   const ws = wb.addWorksheet('สถานะการเข้างาน')
@@ -52,7 +62,7 @@ export async function GET(req: NextRequest) {
     { header: 'สถานะ',        key: 'status',   width: 16 },
   ]
 
-  staff.forEach((s, i) => {
+  sortedStaff.forEach((s, i) => {
     const r   = s.is_registered ? recMap[s.id] : undefined
     const es  = s.is_registered
       ? (r?.check_in_at
