@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
 import { todayDate, isPastHardAbsentCutoff } from '@/lib/attendance'
 import { AppShell } from '@/components/layout/AppShell'
-import { Chip, LocBadge } from '@/components/ui'
+import { DashboardTable, type DashRow } from './DashboardTable'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -146,107 +146,17 @@ export default async function DashboardPage() {
       <div className="animate-fade-up-d2 dash-layout-grid">
 
         {/* Teacher Table */}
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 1px 4px rgba(30,36,51,.05)', overflow: 'hidden' }}>
-          {/* Panel header */}
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>รายชื่อครู</div>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-active)', color: 'var(--text-muted)', border: '1px solid var(--line)' }}>
-              {rows.length} คน
-            </span>
-          </div>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-raised)' }}>
-                  {['#', 'ครู', 'เวลาเช็คอิน', 'สถานที่เข้า', 'เวลาเช็คเอาท์', 'สถานที่ออก', 'สถานะ'].map(h => (
-                    <th key={h} style={{
-                      padding: '9px 14px', fontSize: 10.5, fontWeight: 500,
-                      color: 'var(--text-muted)', textAlign: h === '#' ? 'center' : 'left',
-                      letterSpacing: '.07em', textTransform: 'uppercase',
-                      borderBottom: '1px solid var(--line)', whiteSpace: 'nowrap',
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, i) => (
-                  <tr key={row.user.id} className="dash-row" style={{ borderBottom: '1px solid var(--line)' }}>
-                    {/* Row number */}
-                    <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 500, width: 36 }}>
-                      {i + 1}
-                    </td>
-                    {/* Avatar + name */}
-                    <td style={{ padding: '10px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {row.user.avatar_url
-                          ? <img src={row.user.avatar_url} alt="" style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(61,90,241,.15)' }} />
-                          : <div style={{
-                              width: 30, height: 30, borderRadius: '50%',
-                              background: 'var(--accent-dim)', border: '1px solid rgba(61,90,241,.15)',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: 10.5, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
-                            }}>
-                              {row.user.full_name_th.slice(0, 2)}
-                            </div>
-                        }
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                            {row.user.full_name_th}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                            {row.user.department ?? '—'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Check-in time */}
-                    <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: row.record?.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                      {row.record?.check_in_at
-                        ? new Date(row.record.check_in_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
-                        : '—'}
-                    </td>
-                    {/* Location in */}
-                    <td style={{ padding: '10px 14px' }}>
-                      {row.record?.check_in_at
-                        ? <LocBadge mode={row.record.location_mode ?? null} />
-                        : <span style={{ color: 'var(--text-dim)' }}>—</span>}
-                    </td>
-                    {/* Check-out time */}
-                    <td style={{ padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: row.record?.check_out_at ? 'var(--blue-text)' : 'var(--text-dim)', fontVariantNumeric: 'tabular-nums' }}>
-                      {row.record?.check_out_at
-                        ? new Date(row.record.check_out_at).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false })
-                        : '—'}
-                    </td>
-                    {/* Location out */}
-                    <td style={{ padding: '10px 14px' }}>
-                      {row.record?.check_out_at
-                        ? <LocBadge mode={(row.record.check_out_location_mode ?? row.record.location_mode) ?? null} />
-                        : <span style={{ color: 'var(--text-dim)' }}>—</span>}
-                    </td>
-                    {/* Status */}
-                    <td style={{ padding: '10px 14px' }}>
-                      {row.effectiveStatus === 'wfh'            && <Chip variant="blue"    label="WFH"              />}
-                      {row.effectiveStatus === 'present'        && <Chip variant="ok"      label="วิทยาลัย"         />}
-                      {row.effectiveStatus === 'late'           && <Chip variant="warn"    label="สาย"              />}
-                      {row.effectiveStatus === 'wfh_late'       && <Chip variant="warn"    label="WFH · สาย"        />}
-                      {row.effectiveStatus === 'absent'         && <Chip variant="danger"  label="ขาด"              />}
-                      {row.effectiveStatus === 'not_checked'    && <Chip variant="neutral" label="ยังไม่มา"         />}
-                      {row.effectiveStatus === 'not_registered' && <Chip variant="neutral" label="ยังไม่ลงทะเบียน" />}
-                    </td>
-                  </tr>
-                ))}
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ padding: '28px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                      ไม่มีข้อมูลครู
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DashboardTable rows={rows.map((row): DashRow => ({
+          userId:               row.user.id,
+          name:                 row.user.full_name_th,
+          dept:                 row.user.department ?? null,
+          avatarUrl:            row.user.avatar_url ?? null,
+          checkInAt:            row.record?.check_in_at ?? null,
+          checkOutAt:           row.record?.check_out_at ?? null,
+          locationMode:         row.record?.location_mode ?? null,
+          checkOutLocationMode: (row.record?.check_out_location_mode ?? row.record?.location_mode) ?? null,
+          effectiveStatus:      row.effectiveStatus,
+        }))} />
 
         {/* Activity Log */}
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 1px 4px rgba(30,36,51,.05)', overflow: 'hidden' }}>

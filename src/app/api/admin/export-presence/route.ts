@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
 import ExcelJS from 'exceljs'
 import { isPastHardAbsentCutoff } from '@/lib/attendance'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,9 +17,18 @@ function fmtTime(isoStr: string): string {
   }).format(new Date(isoStr))
 }
 
+function parseCsvTeachers(): Array<{ national_id: string; full_name_th: string }> {
+  const raw = readFileSync(join(process.cwd(), 'data', 'Listname.csv'), 'utf-8').replace(/^\uFEFF/, '')
+  return raw.split(/\r?\n/).filter(Boolean).slice(1).map(line => {
+    const idx = line.indexOf(',')
+    if (idx === -1) return null
+    return { national_id: line.slice(0, idx).trim(), full_name_th: line.slice(idx + 1).trim() }
+  }).filter((t): t is { national_id: string; full_name_th: string } => t !== null && t.national_id.length > 0)
+}
+
 const STATUS_LABEL: Record<string, string> = {
   present: 'วิทยาลัย', wfh: 'WFH', late: 'สาย', wfh_late: 'สาย',
-  absent: 'ขาด', not_checked: 'ยังไม่มา',
+  absent: 'ขาด', not_checked: 'ยังไม่มา', not_registered: 'ยังไม่ลงทะเบียน',
 }
 
 export async function GET(req: NextRequest) {
@@ -29,8 +40,21 @@ export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date') ?? ''
   if (!date) return NextResponse.json({ error: 'Missing date' }, { status: 400 })
 
-  const users   = await db.listActiveTeachers()
-  const records = await db.getTodayRecordsForUsers(date, users.map(u => u.id))
+  // 1. All 212 teachers from CSV
+  const allTeachers = parseCsvTeachers()
+
+  // 2. Registered users from DB
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const registeredUsers = await db.listActiveTeachersForExport() as any[]
+  const nationalIdToUser = new Map<string, { id: string; dept: string | null }>(
+    registeredUsers
+      .filter(u => u.national_id)
+      .map(u => [(u.national_id as string).trim(), { id: u.id as string, dept: u.department as string | null }]),
+  )
+
+  // 3. Attendance records
+  const userIds = registeredUsers.filter(u => u.national_id).map(u => u.id as string)
+  const records = await db.getTodayRecordsForUsers(date, userIds)
   const recMap  = Object.fromEntries(records.map(r => [r.user_id, r]))
 
   const hardCutoff = isPastHardAbsentCutoff()
@@ -50,20 +74,23 @@ export async function GET(req: NextRequest) {
     { header: 'สถานะ',        key: 'status',   width: 16 },
   ]
 
-  users.forEach((u, i) => {
-    const r  = recMap[u.id]
-    const es = r?.check_in_at
-      ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
-      : hardCutoff ? 'absent' : 'not_checked'
+  allTeachers.forEach((teacher, i) => {
+    const reg = nationalIdToUser.get(teacher.national_id)
+    const r   = reg ? recMap[reg.id] : undefined
+    const es  = reg
+      ? (r?.check_in_at
+          ? (r.location_mode === 'wfh' ? (r.status === 'late' ? 'wfh_late' : 'wfh') : r.status)
+          : hardCutoff ? 'absent' : 'not_checked')
+      : 'not_registered'
     const locInLabel  = r?.location_mode === 'wfh' ? 'WFH' : r?.location_mode === 'campus' ? 'วิทยาลัย' : ''
     const locOutLabel = r?.check_out_location_mode === 'wfh' ? 'WFH'
       : r?.check_out_location_mode === 'campus' ? 'วิทยาลัย'
-      : locInLabel  // fallback to check-in location for legacy records
+      : locInLabel
 
     ws.addRow({
       no:       i + 1,
-      name:     u.full_name_th,
-      dept:     u.department ?? '',
+      name:     teacher.full_name_th,
+      dept:     reg?.dept ?? '',
       checkIn:  r?.check_in_at  ? fmtTime(r.check_in_at)  : '',
       locIn:    r?.check_in_at  ? locInLabel : '',
       checkOut: r?.check_out_at ? fmtTime(r.check_out_at) : '',

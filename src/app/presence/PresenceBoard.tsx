@@ -26,6 +26,7 @@ interface Props {
 
 type FilterKey = 'present' | 'late' | 'wfh' | 'wfh_late' | 'absent' | 'not_registered' | null
 type LocFilter  = 'campus' | 'wfh' | null
+type SortMode   = 'name' | 'checkin_asc' | 'checkin_desc'
 
 // ── Status display config ─────────────────────────────────────
 const STATUS_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -150,6 +151,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
   const [search,       setSearch]       = useState('')
   const [locInFilter,  setLocInFilter]  = useState<LocFilter>(null)
   const [locOutFilter, setLocOutFilter] = useState<LocFilter>(null)
+  const [sortMode,     setSortMode]     = useState<SortMode>('name')
 
   function toggleFilter(key: FilterKey) {
     setFilter(f => f === key ? null : key)
@@ -184,6 +186,15 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
   const anyFilter = filter !== null || locInFilter !== null || locOutFilter !== null || q.length > 0
 
   const clearAll = () => { setFilter(null); setLocInFilter(null); setLocOutFilter(null); setSearch('') }
+
+  const sortedRows = sortMode === 'name' ? visibleRows : [...visibleRows].sort((a, b) => {
+    const ta = a.checkIn ?? ''
+    const tb = b.checkIn ?? ''
+    if (!ta && !tb) return 0
+    if (!ta) return 1
+    if (!tb) return -1
+    return sortMode === 'checkin_asc' ? ta.localeCompare(tb) : tb.localeCompare(ta)
+  })
 
   const STATUS_FILTER_LABEL: Record<string, string> = {
     present:        'วิทยาลัย ตรงเวลา',
@@ -326,6 +337,34 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             />
           </div>
 
+          {/* Sort toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '.07em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+              เรียง
+            </span>
+            <div style={{ display: 'inline-flex', borderRadius: 7, border: '1px solid var(--line-mid)', overflow: 'hidden', flexShrink: 0 }}>
+              {([
+                { key: 'name'         as SortMode, label: 'ชื่อ' },
+                { key: 'checkin_asc'  as SortMode, label: 'เข้า ↑' },
+                { key: 'checkin_desc' as SortMode, label: 'เข้า ↓' },
+              ]).map((opt, i) => {
+                const isActive = sortMode === opt.key
+                return (
+                  <button key={opt.key} onClick={() => setSortMode(opt.key)} style={{
+                    padding: '5px 10px', fontSize: 12, fontWeight: isActive ? 700 : 500,
+                    background: isActive ? 'var(--accent)' : 'var(--bg-surface)',
+                    color: isActive ? '#fff' : 'var(--text-secondary)',
+                    border: 'none', borderLeft: i > 0 ? '1px solid var(--line-mid)' : 'none',
+                    cursor: 'pointer', transition: 'background .12s, color .12s',
+                    whiteSpace: 'nowrap', fontFamily: "'Sarabun', sans-serif",
+                  }}>
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Right: result count + export */}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
             <span style={{ fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
@@ -436,7 +475,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         </div>
 
         {/* Rows */}
-        {visibleRows.length === 0 && (
+        {sortedRows.length === 0 && (
           <div style={{ padding: '40px 32px', textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>ไม่มีข้อมูลตรงกับเงื่อนไขที่เลือก</div>
             {anyFilter && (
@@ -449,7 +488,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
           </div>
         )}
 
-        {visibleRows.map((row, idx) => {
+        {sortedRows.map((row, idx) => {
           const sc = STATUS_COLOR[row.effectiveStatus] ?? STATUS_COLOR.not_checked
           const locInMode  = row.checkIn  ? row.locMode    : null
           const locOutMode = row.checkOut ? row.locOutMode : null
@@ -462,7 +501,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                 gridTemplateColumns: '28px minmax(0,1fr) 64px 90px 64px 90px 88px',
                 gap: '0 10px',
                 padding: '9px 14px',
-                borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--line)' : 'none',
+                borderBottom: idx < sortedRows.length - 1 ? '1px solid var(--line)' : 'none',
                 alignItems: 'center',
                 borderLeft: `3px solid ${sc.dot}`,
               }}
@@ -542,7 +581,7 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
         borderRadius: 12, overflow: 'hidden',
         boxShadow: '0 1px 4px rgba(30,36,51,.04)',
       }}>
-        {visibleRows.length === 0 && (
+        {sortedRows.length === 0 && (
           <div style={{ padding: '40px 32px', textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>ไม่มีข้อมูลตรงกับเงื่อนไขที่เลือก</div>
             {anyFilter && (
@@ -554,12 +593,12 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
             )}
           </div>
         )}
-        {visibleRows.map((row, idx) => {
+        {sortedRows.map((row, idx) => {
           const sc = STATUS_COLOR[row.effectiveStatus] ?? STATUS_COLOR.not_checked
           return (
             <div key={row.userId} style={{
               padding: '12px 14px',
-              borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--line)' : 'none',
+              borderBottom: idx < sortedRows.length - 1 ? '1px solid var(--line)' : 'none',
               borderLeft: `3px solid ${sc.dot}`,
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
