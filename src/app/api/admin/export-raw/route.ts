@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +22,33 @@ function extractHHMMSS(isoStr: string): string {
 function toDDMMYYYY(dateStr: string): string {
   const [y, m, d] = dateStr.split('-')
   return `${d}/${m}/${y}`
+}
+
+function parseCsvTeachers(): Array<{ national_id: string; full_name_th: string }> {
+  const csvPath = join(process.cwd(), 'data', 'Listname.csv')
+  const raw = readFileSync(csvPath, 'utf-8').replace(/^\uFEFF/, '') // strip BOM
+  const lines = raw.split(/\r?\n/).filter(Boolean)
+  return lines.slice(1).map(line => {
+    const idx = line.indexOf(',')
+    if (idx === -1) return null
+    return {
+      national_id:  line.slice(0, idx).trim(),
+      full_name_th: line.slice(idx + 1).trim(),
+    }
+  }).filter((t): t is { national_id: string; full_name_th: string } =>
+    t !== null && t.national_id.length > 0,
+  )
+}
+
+function generateDates(from: string, to: string): string[] {
+  const dates: string[] = []
+  const cur = new Date(from + 'T00:00:00Z')
+  const end = new Date(to   + 'T00:00:00Z')
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0, 10))
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return dates
 }
 
 export async function GET(req: NextRequest) {
@@ -44,72 +73,80 @@ export async function GET(req: NextRequest) {
   const filterIn  = !!(timeInFrom  && timeInTo)
   const filterOut = !!(timeOutFrom && timeOutTo)
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const users = await db.listActiveTeachersForExport()
-  const userMap = new Map<string, { national_id: string; name: string }>(
-    users
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((u: any) => u.national_id)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((u: any) => [u.id, { national_id: u.national_id as string, name: u.full_name_th as string }]),
-  )
+  // 1. All 212 teachers from CSV (source of truth)
+  const allTeachers = parseCsvTeachers()
 
+  // 2. Registered users from DB
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const records = await db.getAttendanceForReport(users.map((u: any) => u.id), from, to)
+  const registeredUsers = await db.listActiveTeachersForExport() as any[]
 
+  // 3. national_id → user_id map
+  const nationalIdToUserId = new Map<string, string>()
+  for (const u of registeredUsers) {
+    if (u.national_id) nationalIdToUserId.set((u.national_id as string).trim(), u.id as string)
+  }
+
+  // 4. Attendance records for all registered users in the date range
+  const userIds = registeredUsers.filter(u => u.national_id).map(u => u.id as string)
+  const records = await db.getAttendanceForReport(userIds, from, to)
+
+  // 5. (user_id:date) → record map
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recordMap = new Map<string, any>()
+  for (const rec of records) {
+    recordMap.set(`${rec.user_id}:${rec.date}`, rec)
+  }
+
+  // 6. All dates in range
+  const dates = generateDates(from, to)
+
+  // 7. Output: all dates × all 212 teachers
   const lines: string[] = []
 
-  for (const rec of records) {
-    const info = userMap.get(rec.user_id)
-    if (!info) continue
+  for (const dateStr of dates) {
+    for (const teacher of allTeachers) {
+      const { national_id, full_name_th: name } = teacher
+      const userId = nationalIdToUserId.get(national_id)
+      const rec    = userId ? recordMap.get(`${userId}:${dateStr}`) : undefined
+      const date   = toDDMMYYYY(dateStr)
 
-    const { national_id, name } = info
-    const dateStr = toDDMMYYYY(rec.date)
-
-    if (filterIn && !filterOut) {
-      // ── Check-in filter only → show เข้า time ───────────────
-      if (!rec.check_in_at) continue
-      const hhmmss = extractHHMMSS(rec.check_in_at)
-      if (hhmmss.slice(0, 5) < timeInFrom || hhmmss.slice(0, 5) > timeInTo) continue
-      lines.push(`${national_id},${dateStr},${hhmmss},${name}`)
-
-    } else if (!filterIn && filterOut) {
-      // ── Check-out filter only → show ออก time ───────────────
-      if (!rec.check_out_at) continue
-      const hhmmss = extractHHMMSS(rec.check_out_at)
-      if (hhmmss.slice(0, 5) < timeOutFrom || hhmmss.slice(0, 5) > timeOutTo) continue
-      lines.push(`${national_id},${dateStr},${hhmmss},${name}`)
-
-    } else {
-      // ── No filter OR both filters → show เข้า + ออก ─────────
-      let inTime  = ''
-      let outTime = ''
-
-      if (rec.check_in_at) {
+      if (filterIn && !filterOut) {
+        // ── Check-in filter only ─────────────────────────────────────
+        if (!rec?.check_in_at) continue
         const hhmmss = extractHHMMSS(rec.check_in_at)
-        // If filterIn is active, check the time range; otherwise always include
-        if (!filterIn || (hhmmss.slice(0, 5) >= timeInFrom && hhmmss.slice(0, 5) <= timeInTo)) {
-          inTime = hhmmss
-        }
-      }
+        if (hhmmss.slice(0, 5) < timeInFrom || hhmmss.slice(0, 5) > timeInTo) continue
+        lines.push(`${national_id},${date},${hhmmss},${name}`)
 
-      if (rec.check_out_at) {
+      } else if (!filterIn && filterOut) {
+        // ── Check-out filter only ────────────────────────────────────
+        if (!rec?.check_out_at) continue
         const hhmmss = extractHHMMSS(rec.check_out_at)
-        if (!filterOut || (hhmmss.slice(0, 5) >= timeOutFrom && hhmmss.slice(0, 5) <= timeOutTo)) {
-          outTime = hhmmss
-        }
-      }
+        if (hhmmss.slice(0, 5) < timeOutFrom || hhmmss.slice(0, 5) > timeOutTo) continue
+        lines.push(`${national_id},${date},${hhmmss},${name}`)
 
-      // When both filters active, require both to match
-      if (filterIn && filterOut && (!inTime || !outTime)) continue
-      if (!inTime && !outTime) continue
-
-      if (inTime && outTime) {
-        lines.push(`${national_id},${dateStr},${inTime},${outTime},${name}`)
-      } else if (inTime) {
-        lines.push(`${national_id},${dateStr},${inTime},${name}`)
       } else {
-        lines.push(`${national_id},${dateStr},${outTime},${name}`)
+        // ── No filter OR both filters → national_id,date,in,out,name ─
+        let inTime  = ''
+        let outTime = ''
+
+        if (rec?.check_in_at) {
+          const hhmmss = extractHHMMSS(rec.check_in_at)
+          if (!filterIn || (hhmmss.slice(0, 5) >= timeInFrom && hhmmss.slice(0, 5) <= timeInTo)) {
+            inTime = hhmmss
+          }
+        }
+        if (rec?.check_out_at) {
+          const hhmmss = extractHHMMSS(rec.check_out_at)
+          if (!filterOut || (hhmmss.slice(0, 5) >= timeOutFrom && hhmmss.slice(0, 5) <= timeOutTo)) {
+            outTime = hhmmss
+          }
+        }
+
+        // When both filters active, require both to match
+        if (filterIn && filterOut && (!inTime || !outTime)) continue
+
+        // No filter: always include all 212 teachers (even with no record)
+        lines.push(`${national_id},${date},${inTime},${outTime},${name}`)
       }
     }
   }
