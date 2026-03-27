@@ -191,11 +191,11 @@ export default function CheckinPage() {
       const time  = new Date().toLocaleTimeString('th-TH', { timeZone: SCHOOL_TZ, hour: '2-digit', minute: '2-digit', hour12: false })
       const place = locMode === 'wfh' ? 'WFH' : 'วิทยาลัย'
       showToast(`ลงชื่อออกงานสำเร็จ — ${place} · ${time} น.`, 'ok')
-      fetchToday()
+      fetchToday(); fetchHistory()
     } else {
       showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'danger')
     }
-  }, [locMode, fetchToday]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [locMode, fetchToday, fetchHistory]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // หลัง GPS re-detect สำเร็จ → ส่ง checkout อัตโนมัติ
   useEffect(() => {
@@ -534,7 +534,7 @@ export default function CheckinPage() {
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{pendingCheckout ? 'กำลังระบุตำแหน่ง' : today?.checked_out ? 'อัปเดทเวลาออก' : 'ลงชื่อออกงาน'}</span>
+                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{pendingCheckout ? 'กำลังระบุตำแหน่ง' : today?.checked_out ? 'ออกสำเร็จ' : 'ลงชื่อออกงาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85, textAlign: 'center', lineHeight: 1.3 }}>
                   {pendingCheckout ? 'รอสักครู่...'
                     : today?.checked_out && today.record?.check_out_at
