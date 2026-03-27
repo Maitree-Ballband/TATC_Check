@@ -70,12 +70,15 @@ export default function CheckinPage() {
   const [gpsErrCode,      setGpsErrCode]      = useState<number>(0)
   const [coords,          setCoords]          = useState<{ lat: number; lng: number } | null>(null)
   const [distance,        setDistance]        = useState<number | null>(null)
+  const [accuracy,        setAccuracy]        = useState<number | null>(null)
   const [locMode,         setLocMode]         = useState<'campus' | 'wfh'>('wfh')
   const [loading,         setLoading]         = useState(false)
   const [clock,           setClock]           = useState('')
   const [toast,           setToast]           = useState<{ msg: string; type: string } | null>(null)
   const [showReasonModal, setShowReasonModal] = useState(false)
   const [lateReason,      setLateReason]      = useState('')
+  const [pendingCheckin,  setPendingCheckin]  = useState(false)
+  const [pendingCheckout, setPendingCheckout] = useState(false)
 
   // Live clock (ticks every second)
   useEffect(() => {
@@ -95,8 +98,9 @@ export default function CheckinPage() {
     setGpsState('loading')
     navigator.geolocation.getCurrentPosition(
       pos => {
-        const { latitude, longitude } = pos.coords
+        const { latitude, longitude, accuracy: accMeters } = pos.coords
         setCoords({ lat: latitude, lng: longitude })
+        setAccuracy(accMeters)
         const dist = haversine(latitude, longitude, SCHOOL_LAT, SCHOOL_LNG)
         setDistance(dist)
         setLocMode(dist <= RADIUS_M ? 'campus' : 'wfh')
@@ -155,21 +159,27 @@ export default function CheckinPage() {
     }
   }, [locMode, coords, fetchToday, fetchHistory]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleCheckin = async () => {
+  // หลัง GPS re-detect สำเร็จ → ส่ง checkin อัตโนมัติ
+  useEffect(() => {
+    if (!pendingCheckin) return
+    if (gpsState === 'ok') {
+      setPendingCheckin(false)
+      if (isAfterCheckoutTime())  { showToast(`เลยกำหนดเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger') }
+      else if (isAfterCutoff())   { setLateReason(''); setShowReasonModal(true) }
+      else                        { doCheckin() }
+    }
+    if (gpsState === 'error') { setPendingCheckin(false); showToast('กรุณาแก้ไข GPS ก่อนลงชื่อ', 'danger') }
+  }, [pendingCheckin, gpsState, doCheckin]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCheckin = () => {
     if (today?.checked_in) return
-    if (isAbsent)              { showToast(`เลยกำหนดเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
-    if (gpsState === 'loading') { showToast('กำลังระบุตำแหน่ง กรุณารอสักครู่', 'warn'); return }
-    if (gpsState === 'error')   { showToast('กรุณาแก้ไข GPS ก่อนลงชื่อ', 'danger'); return }
-    if (isLate)                 { setLateReason(''); setShowReasonModal(true); return }
-    doCheckin()
+    if (isAbsent) { showToast(`เลยกำหนดเวลา ${CHECKOUT_AFTER} น. แล้ว — บันทึกว่า "ขาด"`, 'danger'); return }
+    setPendingCheckin(true)
+    detectGps()
   }
 
-  const handleCheckout = async () => {
-    if (!today?.checked_in) return
-    if (!isAfterCheckoutTime()) {
-      showToast(`ลงชื่อออกได้หลัง ${CHECKOUT_AFTER} น. เท่านั้น`, 'warn')
-      return
-    }
+  const doCheckout = useCallback(async () => {
+    setPendingCheckout(false)
     setLoading(true)
     const res = await fetch('/api/attendance/checkout', {
       method: 'POST',
@@ -182,7 +192,26 @@ export default function CheckinPage() {
       const place = locMode === 'wfh' ? 'WFH' : 'วิทยาลัย'
       showToast(`ลงชื่อออกงานสำเร็จ — ${place} · ${time} น.`, 'ok')
       fetchToday()
+    } else {
+      showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'danger')
     }
+  }, [locMode, fetchToday]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // หลัง GPS re-detect สำเร็จ → ส่ง checkout อัตโนมัติ
+  useEffect(() => {
+    if (!pendingCheckout) return
+    if (gpsState === 'ok')    { doCheckout() }
+    if (gpsState === 'error') { setPendingCheckout(false); showToast('กรุณาแก้ไข GPS ก่อนลงชื่อออก', 'danger') }
+  }, [pendingCheckout, gpsState, doCheckout]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCheckout = () => {
+    if (!today?.checked_in) return
+    if (!isAfterCheckoutTime()) {
+      showToast(`ลงชื่อออกได้หลัง ${CHECKOUT_AFTER} น. เท่านั้น`, 'warn')
+      return
+    }
+    setPendingCheckout(true)
+    detectGps()
   }
 
   // Derived state
@@ -210,29 +239,38 @@ export default function CheckinPage() {
         title: e.title, sub: e.hint, isError: true,
       }
     }
+    const poorGps = accuracy !== null && accuracy > 150
     if (locMode === 'campus') return {
-      bg: 'var(--ok-dim)', border: '1px solid rgba(95,184,130,.2)', dot: 'var(--ok)',
+      bg: poorGps ? 'var(--warn-dim)' : 'var(--ok-dim)',
+      border: poorGps ? '1px solid rgba(217,119,6,.25)' : '1px solid rgba(95,184,130,.2)',
+      dot: poorGps ? 'var(--warn)' : 'var(--ok)',
       title: 'แสกน: วิทยาลัย',
-      sub: distance !== null ? `ตรวจพบว่าอยู่ในพื้นที่ · ห่าง ${Math.round(distance)} ม. จากจุดศูนย์กลาง` : 'ตรวจพบว่าอยู่ในพื้นที่วิทยาลัย',
+      sub: distance !== null
+        ? `ตรวจพบว่าอยู่ในพื้นที่ · ห่าง ${Math.round(distance)} ม.${accuracy !== null ? ` (±${Math.round(accuracy)} ม.)` : ''}${poorGps ? ' ⚠ GPS ไม่แม่น ลองออกไปที่โล่ง' : ''}`
+        : 'ตรวจพบว่าอยู่ในพื้นที่วิทยาลัย',
     }
     return {
-      bg: 'var(--blue-dim)', border: '1px solid rgba(91,142,240,.2)', dot: 'var(--blue)',
-      title: 'แสกน: Work From Home (WFH)',
-      sub: distance !== null ? `อยู่นอกพื้นที่ ห่าง ${Math.round(distance)} ม. · เกณฑ์วิทยาลัย ≤ ${RADIUS_M} ม.` : `อยู่นอกพื้นที่วิทยาลัย (เกณฑ์ ≤ ${RADIUS_M} ม.)`,
+      bg: poorGps ? 'var(--warn-dim)' : 'var(--blue-dim)',
+      border: poorGps ? '1px solid rgba(217,119,6,.25)' : '1px solid rgba(91,142,240,.2)',
+      dot: poorGps ? 'var(--warn)' : 'var(--blue)',
+      title: poorGps ? 'GPS ไม่แม่น — อาจส่งผลต่อการตรวจพื้นที่' : 'แสกน: Work From Home (WFH)',
+      sub: distance !== null
+        ? `อยู่นอกพื้นที่ ห่าง ${Math.round(distance)} ม.${accuracy !== null ? ` (±${Math.round(accuracy)} ม.)` : ''} · เกณฑ์ ≤ ${RADIUS_M} ม.${poorGps ? ' — ลองออกไปที่โล่งแล้วกด ↺ ลองใหม่' : ''}`
+        : `อยู่นอกพื้นที่วิทยาลัย (เกณฑ์ ≤ ${RADIUS_M} ม.)`,
     }
   })()
 
   // Check-in button appearance
-  const checkinBtnDisabled = loading || !!today?.checked_in || isAbsent || gpsState === 'loading' || gpsState === 'error'
+  const checkinBtnDisabled = loading || pendingCheckin || !!today?.checked_in || isAbsent || gpsState === 'loading'
   const checkinBtnBg = today?.checked_in  ? 'var(--ok-dim)'
     : isAbsent                            ? 'var(--danger-dim)'
-    : gpsState === 'error'                ? 'var(--danger-dim)'
+    : pendingCheckin                      ? 'var(--bg-raised)'
     : isLate                              ? 'var(--warn-dim)'
     : gpsState === 'loading'              ? 'var(--bg-raised)'
     : 'var(--ok)'
   const checkinBtnColor = today?.checked_in ? 'var(--ok-text)'
     : isAbsent                              ? 'var(--danger-text)'
-    : gpsState === 'error'                  ? 'var(--danger-text)'
+    : pendingCheckin                        ? 'var(--text-dim)'
     : isLate                                ? 'var(--warn-text)'
     : gpsState === 'loading'                ? 'var(--text-dim)'
     : '#fff'
@@ -452,16 +490,17 @@ export default function CheckinPage() {
                   cursor: checkinBtnDisabled ? 'not-allowed' : 'pointer',
                   background: checkinBtnBg,
                   color: checkinBtnColor,
-                  opacity: gpsState === 'loading' ? 0.5 : 1,
+                  opacity: gpsState === 'loading' || pendingCheckin ? 0.5 : 1,
                   transition: 'all .15s',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{today?.checked_in ? 'เข้าสำเร็จ' : isAbsent ? 'เลยกำหนดเวลา' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
+                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{today?.checked_in ? 'เข้าสำเร็จ' : isAbsent ? 'เลยกำหนดเวลา' : pendingCheckin ? 'กำลังระบุตำแหน่ง' : isLate ? 'ลงชื่อสาย' : 'ลงชื่อเข้างาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85, textAlign: 'center', lineHeight: 1.3 }}>
                   {today?.checked_in && today.record?.check_in_at
                     ? fmtTime(today.record.check_in_at)
                     : isAbsent           ? `>${CHECKOUT_AFTER} น.`
+                    : pendingCheckin     ? 'รอสักครู่...'
                     : isLate             ? 'ระบุเหตุผล'
                     : gpsState === 'loading' ? 'กำลังระบุตำแหน่ง'
                     : gpsState === 'error'   ? 'แก้ไข GPS ก่อน'
@@ -473,28 +512,32 @@ export default function CheckinPage() {
               {/* ลงชื่อออก */}
               <button
                 onClick={handleCheckout}
-                disabled={loading || !today?.checked_in || !isAfterCheckoutTime()}
+                disabled={loading || pendingCheckout || !today?.checked_in || !isAfterCheckoutTime()}
                 style={{
                   flex: 1, padding: '22px 8px', borderRadius: 12,
                   fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
                   fontFamily: 'var(--font-heading)',
-                  cursor: today?.checked_in && isAfterCheckoutTime() ? 'pointer' : 'not-allowed',
-                  background: !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
+                  cursor: today?.checked_in && isAfterCheckoutTime() && !pendingCheckout ? 'pointer' : 'not-allowed',
+                  background: pendingCheckout ? 'var(--bg-raised)'
+                    : !today?.checked_in || !isAfterCheckoutTime() ? 'transparent'
                     : today?.checked_out ? 'var(--ok-dim)' : 'var(--blue)',
-                  color: !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
+                  color: pendingCheckout ? 'var(--text-dim)'
+                    : !today?.checked_in || !isAfterCheckoutTime() ? 'var(--text-dim)'
                     : today?.checked_out ? 'var(--ok-text)' : '#fff',
-                  border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out
+                  border: today?.checked_in && isAfterCheckoutTime() && !today?.checked_out && !pendingCheckout
                     ? '2px solid var(--blue-text)'
                     : today?.checked_in && isAfterCheckoutTime() && today?.checked_out
                     ? '1px solid rgba(22,163,74,.3)'
                     : '1px solid var(--line-mid)',
+                  opacity: pendingCheckout ? 0.6 : 1,
                   transition: 'all .15s',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
                 }}
               >
-                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{today?.checked_out ? 'ออกสำเร็จ' : 'ลงชื่อออกงาน'}</span>
+                <span style={{ lineHeight: 1.3, textAlign: 'center' }}>{pendingCheckout ? 'กำลังระบุตำแหน่ง' : today?.checked_out ? 'อัปเดทเวลาออก' : 'ลงชื่อออกงาน'}</span>
                 <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'var(--font-mono)', opacity: 0.85, textAlign: 'center', lineHeight: 1.3 }}>
-                  {today?.checked_out && today.record?.check_out_at
+                  {pendingCheckout ? 'รอสักครู่...'
+                    : today?.checked_out && today.record?.check_out_at
                     ? fmtTime(today.record.check_out_at)
                     : `หลัง ${CHECKOUT_AFTER} น.`}
                 </span>
