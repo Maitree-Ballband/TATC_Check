@@ -556,80 +556,41 @@ export default function CheckinPage() {
           <Panel>
             <PanelHeader title="ประวัติ 7 วันล่าสุด" />
 
-            {/* Desktop table */}
-            <div className="checkin-hist-desktop">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['วันที่', 'เข้างาน', 'สถานที่', 'ออกงาน', 'สถานที่'].map((h, i) => (
-                      <th key={i} style={{ padding: '10px 14px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--line)', fontFamily: 'var(--font-body)', letterSpacing: '.03em' }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.length === 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '28px 14px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
-                        ยังไม่มีประวัติการลงชื่อ
-                      </td>
-                    </tr>
-                  )}
-                  {history.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                      <td style={{ padding: '11px 14px', fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-                        {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: '2-digit', month: 'short' })}
-                      </td>
-                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_in_at  ? fmtTime(r.check_in_at)  : '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px' }}>
-                        {r.check_in_at ? <LocBadge mode={r.location_mode} /> : null}
-                      </td>
-                      <td style={{ padding: '11px 14px', fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px' }}>
-                        {r.check_out_at ? <LocBadge mode={r.check_out_location_mode ?? r.location_mode} /> : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {history.length === 0 && (
+              <div style={{ padding: '28px 16px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
+                ยังไม่มีประวัติการลงชื่อ
+              </div>
+            )}
+            {history.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--line)' }}>
 
-            {/* Mobile card list */}
-            <div className="checkin-hist-mobile">
-              {history.length === 0 && (
-                <div style={{ padding: '28px 16px', textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
-                  ยังไม่มีประวัติการลงชื่อ
+                {/* วันที่ */}
+                <div style={{ width: 72, flexShrink: 0, fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)', lineHeight: 1.3 }}>
+                  {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: 'numeric', month: 'short' })}
                 </div>
-              )}
-              {history.map(r => (
-                <div key={r.id} style={{ padding: '13px 16px', borderBottom: '1px solid var(--line)' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-body)', marginBottom: 6 }}>
-                    {new Date(r.date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'short', day: 'numeric', month: 'short' })}
-                  </div>
-                  <div style={{ display: 'flex', gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>เข้า</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_in_at ? fmtTime(r.check_in_at) : '—'}
-                      </span>
-                      {r.check_in_at && <LocBadge mode={r.location_mode} />}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>ออก</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)' }}>
-                        {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
-                      </span>
-                      {r.check_out_at && <LocBadge mode={r.check_out_location_mode ?? r.location_mode} />}
-                    </div>
-                  </div>
+
+                {/* เข้างาน */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', flexShrink: 0 }}>เข้า</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_in_at ? 'var(--text-primary)' : 'var(--text-dim)', flexShrink: 0 }}>
+                    {r.check_in_at ? fmtTime(r.check_in_at) : '—'}
+                  </span>
+                  {r.check_in_at && <LocBadge mode={r.location_mode} />}
                 </div>
-              ))}
-            </div>
+
+                <div style={{ color: 'var(--line-mid)', fontSize: 12, flexShrink: 0 }}>·</div>
+
+                {/* ออกงาน */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', flexShrink: 0 }}>ออก</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: r.check_out_at ? 'var(--text-primary)' : 'var(--text-dim)', flexShrink: 0 }}>
+                    {r.check_out_at ? fmtTime(r.check_out_at) : '—'}
+                  </span>
+                  {r.check_out_at && <LocBadge mode={r.check_out_location_mode ?? r.location_mode} />}
+                </div>
+
+              </div>
+            ))}
           </Panel>
         </div>
 
