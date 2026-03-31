@@ -4,6 +4,7 @@ import * as db from '@/lib/db'
 import type { User } from '@/types'
 
 export const authOptions: NextAuthOptions = {
+  debug: process.env.NEXTAUTH_DEBUG === 'true',
   providers: [
     LineProvider({
       clientId:     process.env.LINE_CLIENT_ID!,
