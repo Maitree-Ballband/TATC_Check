@@ -2,9 +2,8 @@
 # TATC — Teacher Online Attendance System
 # Multi-stage build สำหรับ Docker / self-hosted deployment
 #
-# Stage 1 (deps):    ติดตั้ง production dependencies
-# Stage 2 (builder): รัน next build (NEXT_PUBLIC_* baked in ที่นี่)
-# Stage 3 (runner):  minimal runtime image
+# Stage 1 (builder): ติดตั้ง deps + รัน next build (NEXT_PUBLIC_* baked in ที่นี่)
+# Stage 2 (runner):  minimal runtime image
 #
 # Build args (ส่งจาก Jenkins build stage via --build-arg):
 #   NEXT_PUBLIC_SCHOOL_LAT
@@ -23,14 +22,7 @@
 #   NEXTAUTH_URL
 # ============================================================
 
-# ── Stage 1: Install dependencies ─────────────────────────────
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci --only=production
-
-# ── Stage 2: Build ─────────────────────────────────────────────
+# ── Stage 1: Build ─────────────────────────────────────────────
 FROM node:20-alpine AS builder
 WORKDIR /app
 
