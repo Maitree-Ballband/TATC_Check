@@ -9,7 +9,7 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
-  // output: 'standalone',  // enable for Docker / self-hosted deployment
+  output: 'standalone',  // enable for Docker / self-hosted deployment
 
   images: {
     remotePatterns: [
