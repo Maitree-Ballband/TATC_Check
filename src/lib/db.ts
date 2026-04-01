@@ -95,6 +95,22 @@ export async function deactivateUser(id: string) {
   if (!rowCount) throw new Error('deactivateUser: user not found')
 }
 
+export async function deleteUser(id: string) {
+  const { rowCount } = await pool.query(
+    `DELETE FROM users WHERE id = $1`,
+    [id],
+  )
+  if (!rowCount) throw new Error('deleteUser: user not found')
+}
+
+export async function isNationalIdTaken(nationalId: string, excludeUserId: string): Promise<boolean> {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM users WHERE national_id = $1 AND id != $2 AND is_active = true LIMIT 1`,
+    [nationalId, excludeUserId],
+  )
+  return rows.length > 0
+}
+
 export async function listUsersWithNationalId() {
   const { rows } = await pool.query(
     `SELECT id, national_id FROM users WHERE national_id IS NOT NULL`,

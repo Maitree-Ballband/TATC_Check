@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS public.attendance_records (
 -- Migrations (run once on existing databases):
 -- ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS late_reason text;
 -- ALTER TABLE public.attendance_records ADD COLUMN IF NOT EXISTS check_out_location_mode text CHECK (check_out_location_mode IN ('campus', 'wfh'));
+-- Prevent one person from registering with multiple LINE accounts:
+-- CREATE UNIQUE INDEX IF NOT EXISTS idx_users_national_id_unique ON public.users (national_id) WHERE national_id IS NOT NULL;
 
 -- Auto-refresh updated_at whenever a row is updated (e.g. check-out written)
 CREATE OR REPLACE FUNCTION public.set_updated_at()

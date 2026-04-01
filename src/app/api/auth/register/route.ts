@@ -41,6 +41,15 @@ export async function PATCH(req: NextRequest) {
     )
   }
 
+  // ป้องกัน 1 คน มีหลาย LINE account — เลขบัตรนี้ถูกใช้งานโดย account อื่นแล้ว
+  const taken = await db.isNationalIdTaken(parsed.data.national_id, session.user.id)
+  if (taken) {
+    return NextResponse.json(
+      { error: 'เลขบัตรประชาชนนี้ถูกลงทะเบียนไว้แล้ว กรุณาติดต่อผู้ดูแลระบบ' },
+      { status: 409 },
+    )
+  }
+
   try {
     await db.updatePendingUserProfile(
       session.user.id,

@@ -42,7 +42,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   try {
-    await db.deactivateUser(params.id)
+    // Soft-reject: ตั้ง is_pending=false, is_active=false
+    // เพื่อให้ signIn callback block LINE account นี้ไม่ให้ re-register ได้อีก
+    await db.updateUser(params.id, { is_pending: false, is_active: false })
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'db_error'
