@@ -44,6 +44,9 @@ export async function PATCH(req: NextRequest) {
   // ป้องกัน 1 คน มีหลาย LINE account — เลขบัตรนี้ถูกใช้งานโดย account อื่นแล้ว
   const taken = await db.isNationalIdTaken(parsed.data.national_id, session.user.id)
   if (taken) {
+    // ลบ pending record นี้ทิ้งเลย — ข้อมูลไม่มีประโยชน์ (ไม่มี national_id)
+    // และคนนี้มี account อยู่แล้ว ไม่ควรโผล่ในตาราง admin/users
+    await db.deleteUser(session.user.id).catch(() => null)
     return NextResponse.json(
       { error: 'เลขบัตรประชาชนนี้ถูกลงทะเบียนไว้แล้ว กรุณาติดต่อผู้ดูแลระบบ' },
       { status: 409 },
