@@ -530,12 +530,12 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
                     {row.dept ?? '—'}
-                    {row.lateReason && (
-                      <span style={{ marginLeft: 6, color: 'var(--warn-text)', fontStyle: 'italic' }}>
-                        · {row.lateReason.length > 28 ? row.lateReason.slice(0, 28) + '…' : row.lateReason}
-                      </span>
-                    )}
                   </div>
+                  {row.lateReason && (
+                    <div style={{ fontSize: 11, color: 'var(--warn-text)', fontStyle: 'italic', marginTop: 2 }}>
+                      เหตุสาย: {row.lateReason}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -619,9 +619,14 @@ export function PresenceBoard({ rows, hardCutoffPassed, counts, total, notPresen
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
                   {row.name}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: row.lateReason ? 2 : 4 }}>
                   {row.dept ?? '—'}
                 </div>
+                {row.lateReason && (
+                  <div style={{ fontSize: 11, color: 'var(--warn-text)', fontStyle: 'italic', marginBottom: 4 }}>
+                    เหตุสาย: {row.lateReason}
+                  </div>
+                )}
                 {row.effectiveStatus !== 'not_registered' && (
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

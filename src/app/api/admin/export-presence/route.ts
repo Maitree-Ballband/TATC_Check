@@ -52,14 +52,15 @@ export async function GET(req: NextRequest) {
   const ws = wb.addWorksheet('สถานะการเข้างาน')
 
   ws.columns = [
-    { header: 'ลำดับ',        key: 'no',       width: 8  },
-    { header: 'ชื่อ-สกุล',    key: 'name',     width: 30 },
-    { header: 'แผนก',         key: 'dept',     width: 20 },
-    { header: 'เวลาเข้างาน',  key: 'checkIn',  width: 14 },
-    { header: 'สถานที่เข้า',  key: 'locIn',    width: 14 },
-    { header: 'เวลาออกงาน',   key: 'checkOut', width: 14 },
-    { header: 'สถานที่ออก',   key: 'locOut',   width: 14 },
-    { header: 'สถานะ',        key: 'status',   width: 16 },
+    { header: 'ลำดับ',        key: 'no',         width: 8  },
+    { header: 'ชื่อ-สกุล',    key: 'name',       width: 30 },
+    { header: 'แผนก',         key: 'dept',       width: 20 },
+    { header: 'เวลาเข้างาน',  key: 'checkIn',    width: 14 },
+    { header: 'สถานที่เข้า',  key: 'locIn',      width: 14 },
+    { header: 'เวลาออกงาน',   key: 'checkOut',   width: 14 },
+    { header: 'สถานที่ออก',   key: 'locOut',     width: 14 },
+    { header: 'สถานะ',        key: 'status',     width: 16 },
+    { header: 'เหตุผลมาสาย',  key: 'lateReason', width: 40 },
   ]
 
   sortedStaff.forEach((s, i) => {
@@ -75,14 +76,15 @@ export async function GET(req: NextRequest) {
       : locInLabel
 
     ws.addRow({
-      no:       i + 1,
-      name:     s.full_name_th,
-      dept:     s.department ?? '',
-      checkIn:  r?.check_in_at  ? fmtTime(r.check_in_at)  : '',
-      locIn:    r?.check_in_at  ? locInLabel : '',
-      checkOut: r?.check_out_at ? fmtTime(r.check_out_at) : '',
-      locOut:   r?.check_out_at ? locOutLabel : '',
-      status:   STATUS_LABEL[es as string] ?? (es as string),
+      no:         i + 1,
+      name:       s.full_name_th,
+      dept:       s.department ?? '',
+      checkIn:    r?.check_in_at  ? fmtTime(r.check_in_at)  : '',
+      locIn:      r?.check_in_at  ? locInLabel : '',
+      checkOut:   r?.check_out_at ? fmtTime(r.check_out_at) : '',
+      locOut:     r?.check_out_at ? locOutLabel : '',
+      status:     STATUS_LABEL[es as string] ?? (es as string),
+      lateReason: r?.late_reason ?? '',
     })
   })
 
@@ -98,7 +100,7 @@ export async function GET(req: NextRequest) {
 
   // Add date label in a merged cell above table
   ws.spliceRows(1, 0, [`วันที่: ${new Date(date + 'T00:00:00').toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`])
-  ws.mergeCells(1, 1, 1, 8)
+  ws.mergeCells(1, 1, 1, 9)
   const titleRow = ws.getRow(1)
   titleRow.font = { bold: true, size: 12 }
   titleRow.alignment = { vertical: 'middle', horizontal: 'left' }
