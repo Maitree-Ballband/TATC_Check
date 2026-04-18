@@ -32,6 +32,12 @@ function isAfterCheckoutTime(): boolean {
   return bkkMinutes(new Date()) >= h * 60 + m
 }
 
+function isWeekendDay(): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: SCHOOL_TZ, weekday: 'short' }).formatToParts(new Date())
+  const weekday = parts.find(p => p.type === 'weekday')!.value
+  return weekday === 'Sat' || weekday === 'Sun'
+}
+
 function isAfterCutoff(): boolean {
   const [h, m] = CUTOFF.split(':').map(Number)
   return bkkMinutes(new Date()) > h * 60 + m
@@ -215,10 +221,12 @@ export default function CheckinPage() {
   }
 
   // Derived state
-  const isAbsent = !today?.checked_in && isAfterCheckoutTime()
-  const isLate   = !today?.checked_in && isAfterCutoff() && !isAfterCheckoutTime()
+  const isHoliday = isWeekendDay()
+  const isAbsent = !isHoliday && !today?.checked_in && isAfterCheckoutTime()
+  const isLate   = !isHoliday && !today?.checked_in && isAfterCutoff() && !isAfterCheckoutTime()
 
   const statusChip = () => {
+    if (isHoliday && !today?.checked_in)       return <Chip variant="blue"   label="วันหยุด" />
     if (isAbsent)                              return <Chip variant="danger"  label="ขาด" />
     if (!today?.checked_in)                    return <Chip variant="neutral" label="ยังไม่ลงชื่อ" />
     if (today.record?.location_mode === 'wfh') return <Chip variant="blue"   label="WFH" />
@@ -261,14 +269,16 @@ export default function CheckinPage() {
   })()
 
   // Check-in button appearance
-  const checkinBtnDisabled = loading || pendingCheckin || !!today?.checked_in || isAbsent || gpsState === 'loading'
+  const checkinBtnDisabled = loading || pendingCheckin || !!today?.checked_in || isAbsent || isHoliday || gpsState === 'loading'
   const checkinBtnBg = today?.checked_in  ? 'var(--ok-dim)'
+    : isHoliday                           ? 'var(--bg-raised)'
     : isAbsent                            ? 'var(--danger-dim)'
     : pendingCheckin                      ? 'var(--bg-raised)'
     : isLate                              ? 'var(--warn-dim)'
     : gpsState === 'loading'              ? 'var(--bg-raised)'
     : 'var(--ok)'
   const checkinBtnColor = today?.checked_in ? 'var(--ok-text)'
+    : isHoliday                             ? 'var(--text-dim)'
     : isAbsent                              ? 'var(--danger-text)'
     : pendingCheckin                        ? 'var(--text-dim)'
     : isLate                                ? 'var(--warn-text)'
@@ -391,10 +401,14 @@ export default function CheckinPage() {
               {new Date().toLocaleDateString('th-TH', { timeZone: SCHOOL_TZ, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
 
-            {/* Status banner: absent or late */}
-            {(isAbsent || isLate) && (
+            {/* Status banner: weekend / absent / late */}
+            {(isHoliday || isAbsent || isLate) && (
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 10 }}>
-                {isAbsent
+                {isHoliday
+                  ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--blue-dim)', border: '1px solid rgba(91,142,240,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--blue)', fontFamily: 'var(--font-body)' }}>
+                      🎉 วันหยุด — ไม่ต้องลงชื่อเข้า-ออก
+                    </div>
+                  : isAbsent
                   ? <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--danger-dim)', border: '1px solid rgba(220,38,38,.3)', borderRadius: 8, padding: '7px 16px', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)', fontFamily: 'var(--font-body)' }}>
                       ⛔ เลยกำหนดเวลา {CHECKOUT_AFTER} น. แล้ว — สถานะบันทึกเป็น "ขาด"
                     </div>
@@ -512,7 +526,7 @@ export default function CheckinPage() {
               {/* ลงชื่อออก */}
               <button
                 onClick={handleCheckout}
-                disabled={loading || pendingCheckout || !today?.checked_in || !isAfterCheckoutTime()}
+                disabled={loading || pendingCheckout || !today?.checked_in || !isAfterCheckoutTime() || isHoliday}
                 style={{
                   flex: 1, padding: '22px 8px', borderRadius: 12,
                   fontSize: 18, fontWeight: 700, letterSpacing: '.01em',
@@ -545,9 +559,11 @@ export default function CheckinPage() {
             </div>
 
             {/* Footer rule */}
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
-              เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
-            </div>
+            {!isHoliday && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', textAlign: 'center', lineHeight: 1.8 }}>
+                เกิน {CUTOFF} น. = มาสาย (ต้องระบุเหตุผล) &nbsp;·&nbsp; ไม่ลงชื่อก่อน {CHECKOUT_AFTER} น. = ขาด
+              </div>
+            )}
           </div>
         </div>
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import * as db from '@/lib/db'
-import { todayDate, currentTimeMinutes } from '@/lib/attendance'
+import { todayDate, currentTimeMinutes, isWeekend } from '@/lib/attendance'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
   }
   if (session.user.isPending) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (isWeekend()) {
+    return NextResponse.json({ error: 'weekend' }, { status: 403 })
   }
 
   const date     = todayDate()

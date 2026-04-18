@@ -84,6 +84,19 @@ export function isPastHardAbsentCutoff(): boolean {
 }
 
 /**
+ * Returns true when today (in school timezone) is Saturday or Sunday.
+ * Used to block check-in/check-out on weekends.
+ */
+export function isWeekend(): boolean {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: SCHOOL_TZ,
+    weekday: 'short',
+  }).formatToParts(new Date())
+  const weekday = parts.find(p => p.type === 'weekday')!.value
+  return weekday === 'Sat' || weekday === 'Sun'
+}
+
+/**
  * Returns current time as total minutes since midnight in school timezone.
  * Used by checkout to check if it's past the checkout cutoff.
  */
