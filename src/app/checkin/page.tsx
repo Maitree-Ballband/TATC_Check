@@ -54,11 +54,27 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 // ── GPS error messages ────────────────────────────────────────
-const GPS_ERROR: Record<number, { title: string; hint: string }> = {
-  0: { title: 'เบราว์เซอร์ไม่รองรับ GPS',   hint: 'กรุณาเปิดเว็บใน Chrome หรือ Safari' },
-  1: { title: 'ยังไม่ได้อนุญาตใช้ GPS',     hint: 'ไปที่ตั้งค่าเบราว์เซอร์ → ตำแหน่ง → อนุญาตสำหรับเว็บไซต์นี้' },
-  2: { title: 'ระบุตำแหน่งไม่ได้ในขณะนี้',  hint: 'ลองออกไปที่โล่ง หรือเปิด Wi-Fi แล้วกด "ลองใหม่"' },
-  3: { title: 'GPS ใช้เวลานานเกินไป',        hint: 'ลองย้ายไปที่โล่ง แล้วกด "ลองใหม่"' },
+const GPS_ERROR: Record<number, { title: string; hintMobile: string; hintDesktop: string }> = {
+  0: {
+    title: 'เบราว์เซอร์ไม่รองรับ GPS',
+    hintMobile: 'กรุณาเปิดเว็บใน Chrome หรือ Safari',
+    hintDesktop: 'กรุณาเปิดเว็บใน Chrome หรือ Edge เวอร์ชันล่าสุด',
+  },
+  1: {
+    title: 'ยังไม่ได้อนุญาตใช้ตำแหน่ง',
+    hintMobile: 'แตะไอคอน 🔒 ที่แถบที่อยู่ → ตำแหน่ง → อนุญาต แล้วกด "ลองใหม่"',
+    hintDesktop: 'คลิก 🔒 ในแถบที่อยู่ → อนุญาตตำแหน่ง  •  หรือ Windows: Settings → Privacy & Security → Location → เปิดใช้งาน และอนุญาต Chrome/Edge',
+  },
+  2: {
+    title: 'ระบุตำแหน่งไม่ได้ในขณะนี้',
+    hintMobile: 'เปิด Wi-Fi ไว้ด้วย แล้วกด "ลองใหม่"',
+    hintDesktop: 'Windows: Settings → Privacy & Security → Location → เปิดใช้งาน และอนุญาต Chrome/Edge  •  เปิด Wi-Fi ด้วยเสมอ',
+  },
+  3: {
+    title: 'GPS ใช้เวลานานเกินไป',
+    hintMobile: 'เปิด Wi-Fi ไว้ แล้วกด "ลองใหม่"',
+    hintDesktop: 'ตรวจสอบว่า Windows Location Services เปิดอยู่ แล้วกด "ลองใหม่"',
+  },
 }
 
 // ── Static style constants ────────────────────────────────────
@@ -97,7 +113,8 @@ export default function CheckinPage() {
   }, [])
 
   // GPS — extracted so the retry button can call it directly
-  const detectGps = useCallback(() => {
+  // On desktop, enableHighAccuracy:true often fails (no GPS hardware) → fallback to network-based location
+  const detectGps = useCallback((highAccuracy = true) => {
     if (!navigator.geolocation) {
       setGpsState('error'); setGpsErrCode(0); return
     }
@@ -112,8 +129,28 @@ export default function CheckinPage() {
         setLocMode(dist <= RADIUS_M ? 'campus' : 'wfh')
         setGpsState('ok')
       },
-      err => { setGpsState('error'); setGpsErrCode(err.code) },
-      { enableHighAccuracy: true, timeout: 10000 },
+      err => {
+        // Retry once with low accuracy (network/IP-based) when high accuracy fails on desktop
+        // Skip retry on PERMISSION_DENIED (code 1) — user explicitly blocked location
+        if (highAccuracy && err.code !== 1) {
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              const { latitude, longitude, accuracy: accMeters } = pos.coords
+              setCoords({ lat: latitude, lng: longitude })
+              setAccuracy(accMeters)
+              const dist = haversine(latitude, longitude, SCHOOL_LAT, SCHOOL_LNG)
+              setDistance(dist)
+              setLocMode(dist <= RADIUS_M ? 'campus' : 'wfh')
+              setGpsState('ok')
+            },
+            fallbackErr => { setGpsState('error'); setGpsErrCode(fallbackErr.code) },
+            { enableHighAccuracy: false, timeout: 15000 },
+          )
+        } else {
+          setGpsState('error'); setGpsErrCode(err.code)
+        }
+      },
+      { enableHighAccuracy: highAccuracy, timeout: 10000 },
     )
   }, [])
 
@@ -242,9 +279,10 @@ export default function CheckinPage() {
     }
     if (gpsState === 'error') {
       const e = GPS_ERROR[gpsErrCode] ?? GPS_ERROR[2]
+      const isDesktop = typeof navigator !== 'undefined' && navigator.maxTouchPoints === 0
       return {
         bg: 'var(--warn-dim)', border: '1px solid rgba(217,119,6,.25)', dot: 'var(--warn)',
-        title: e.title, sub: e.hint, isError: true,
+        title: e.title, sub: isDesktop ? e.hintDesktop : e.hintMobile, isError: true,
       }
     }
     const poorGps = accuracy !== null && accuracy > 150
@@ -438,7 +476,7 @@ export default function CheckinPage() {
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                         <button
-                          onClick={detectGps}
+                          onClick={() => detectGps()}
                           style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--danger-text)', background: 'var(--danger-dim)', color: 'var(--danger-text)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
                         >
                           ↺ ลองใหม่
