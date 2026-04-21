@@ -19,7 +19,6 @@ const NAV_ADMIN = [
   { href: '/dashboard',   label: 'Dashboard',    icon: GridIcon     },
   { href: '/presence',    label: 'สถานะครู',     icon: UsersIcon    },
   { href: '/checkin',     label: 'เช็คอิน',      icon: CheckIcon    },
-  { href: '/report',      label: 'รายงาน',       icon: ReportIcon   },
   { href: '/admin/users', label: 'จัดการผู้ใช้', icon: UserMgmtIcon },
 ]
 
@@ -230,13 +229,7 @@ function UsersIcon({ size = 16, style }: { size?: number; style?: React.CSSPrope
     </svg>
   )
 }
-function ReportIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={style}>
-      <path d="M2 2h12v12H2z"/><path d="M5 6h6M5 9h4"/>
-    </svg>
-  )
-}
+
 function UserMgmtIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={style}>
