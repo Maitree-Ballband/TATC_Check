@@ -4,32 +4,11 @@ import { NextResponse } from 'next/server'
 const ADMIN_ONLY  = ['/admin']
 const EXEC_PLUS   = ['/dashboard', '/presence']  // admin + executive
 
-function isInternalIP(ip: string): boolean {
-  return (
-    ip === '127.0.0.1' ||
-    ip === '::1' ||
-    ip.startsWith('10.') ||
-    ip.startsWith('192.168.') ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(ip)
-  )
-}
-
 export default withAuth(
   function middleware(req) {
     const token    = req.nextauth.token
     const role     = token?.role as string | undefined
     const pathname = req.nextUrl.pathname
-
-    // Block /api/rms/* จากภายนอก — อนุญาตเฉพาะ internal IP
-    if (pathname.startsWith('/api/rms/')) {
-      const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
-              ?? req.headers.get('x-real-ip')
-              ?? '0.0.0.0'
-      if (!isInternalIP(ip)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-      }
-      return NextResponse.next()
-    }
 
     // Redirect root based on role
     if (pathname === '/') {
@@ -65,6 +44,5 @@ export const config = {
     '/presence/:path*',
     '/api/admin/:path*',
     '/api/attendance/:path*',
-    '/api/rms/:path*',
   ],
 }

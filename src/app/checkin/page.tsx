@@ -56,24 +56,24 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 // ── GPS error messages ────────────────────────────────────────
 const GPS_ERROR: Record<number, { title: string; hintMobile: string; hintDesktop: string }> = {
   0: {
-    title: 'เบราว์เซอร์ไม่รองรับ GPS',
-    hintMobile: 'กรุณาเปิดเว็บใน Chrome หรือ Safari',
-    hintDesktop: 'กรุณาเปิดเว็บใน Chrome หรือ Edge เวอร์ชันล่าสุด',
+    title:       'เบราว์เซอร์ไม่รองรับ',
+    hintMobile:  'ใช้ Chrome หรือ Safari',
+    hintDesktop: 'ใช้ Chrome หรือ Edge',
   },
   1: {
-    title: 'ยังไม่ได้อนุญาตใช้ตำแหน่ง',
-    hintMobile: 'แตะไอคอน 🔒 ที่แถบที่อยู่ → ตำแหน่ง → อนุญาต แล้วกด "ลองใหม่"',
-    hintDesktop: 'คลิก 🔒 ในแถบที่อยู่ → อนุญาตตำแหน่ง  •  หรือ Windows: Settings → Privacy & Security → Location → เปิดใช้งาน และอนุญาต Chrome/Edge',
+    title:       'ยังไม่อนุญาตตำแหน่ง',
+    hintMobile:  'แตะ 🔒 → ตำแหน่ง → อนุญาต',
+    hintDesktop: 'คลิก 🔒 ในแถบ URL → อนุญาตตำแหน่ง',
   },
   2: {
-    title: 'ระบุตำแหน่งไม่ได้ในขณะนี้',
-    hintMobile: 'เปิด Wi-Fi ไว้ด้วย แล้วกด "ลองใหม่"',
-    hintDesktop: 'Windows: Settings → Privacy & Security → Location → เปิดใช้งาน และอนุญาต Chrome/Edge  •  เปิด Wi-Fi ด้วยเสมอ',
+    title:       'ระบุตำแหน่งไม่ได้',
+    hintMobile:  'เปิด Wi-Fi แล้วลองใหม่',
+    hintDesktop: 'เปิด Location Services แล้วลองใหม่',
   },
   3: {
-    title: 'GPS ใช้เวลานานเกินไป',
-    hintMobile: 'เปิด Wi-Fi ไว้ แล้วกด "ลองใหม่"',
-    hintDesktop: 'ตรวจสอบว่า Windows Location Services เปิดอยู่ แล้วกด "ลองใหม่"',
+    title:       'ค้นหาตำแหน่งนานเกินไป',
+    hintMobile:  'เปิด Wi-Fi แล้วลองใหม่',
+    hintDesktop: 'ตรวจ Location Services แล้วลองใหม่',
   },
 }
 
@@ -275,7 +275,7 @@ export default function CheckinPage() {
   const gpsInfo = (() => {
     if (gpsState === 'loading') return {
       bg: 'var(--bg-raised)', border: '1px solid var(--line-mid)', dot: 'var(--text-dim)',
-      title: 'กำลังระบุตำแหน่ง GPS...', sub: 'กรุณารอสักครู่',
+      title: 'กำลังระบุตำแหน่ง...', sub: 'รอสักครู่',
     }
     if (gpsState === 'error') {
       const e = GPS_ERROR[gpsErrCode] ?? GPS_ERROR[2]
@@ -285,24 +285,24 @@ export default function CheckinPage() {
         title: e.title, sub: isDesktop ? e.hintDesktop : e.hintMobile, isError: true,
       }
     }
-    const poorGps = accuracy !== null && accuracy > 150
+    const poorGps = accuracy !== null && accuracy > RADIUS_M
     if (locMode === 'campus') return {
-      bg: poorGps ? 'var(--warn-dim)' : 'var(--ok-dim)',
-      border: poorGps ? '1px solid rgba(217,119,6,.25)' : '1px solid rgba(95,184,130,.2)',
-      dot: poorGps ? 'var(--warn)' : 'var(--ok)',
-      title: 'แสกน: วิทยาลัย',
+      bg: 'var(--ok-dim)',
+      border: '1px solid rgba(95,184,130,.2)',
+      dot: 'var(--ok)',
+      title: '📍 อยู่ในวิทยาลัย',
       sub: distance !== null
-        ? `ตรวจพบว่าอยู่ในพื้นที่ · ห่าง ${Math.round(distance)} ม.${accuracy !== null ? ` (±${Math.round(accuracy)} ม.)` : ''}${poorGps ? ' ⚠ GPS ไม่แม่น ลองออกไปที่โล่ง' : ''}`
-        : 'ตรวจพบว่าอยู่ในพื้นที่วิทยาลัย',
+        ? `ห่าง ${Math.round(distance)} ม.${poorGps ? ' (โดยประมาณ)' : ''}`
+        : 'อยู่ในพื้นที่วิทยาลัย',
     }
     return {
-      bg: poorGps ? 'var(--warn-dim)' : 'var(--blue-dim)',
-      border: poorGps ? '1px solid rgba(217,119,6,.25)' : '1px solid rgba(91,142,240,.2)',
-      dot: poorGps ? 'var(--warn)' : 'var(--blue)',
-      title: poorGps ? 'GPS ไม่แม่น — อาจส่งผลต่อการตรวจพื้นที่' : 'แสกน: Work From Home (WFH)',
+      bg: 'var(--blue-dim)',
+      border: '1px solid rgba(91,142,240,.2)',
+      dot: 'var(--blue)',
+      title: '🏠 Work From Home',
       sub: distance !== null
-        ? `อยู่นอกพื้นที่ ห่าง ${Math.round(distance)} ม.${accuracy !== null ? ` (±${Math.round(accuracy)} ม.)` : ''} · เกณฑ์ ≤ ${RADIUS_M} ม.${poorGps ? ' — ลองออกไปที่โล่งแล้วกด ↺ ลองใหม่' : ''}`
-        : `อยู่นอกพื้นที่วิทยาลัย (เกณฑ์ ≤ ${RADIUS_M} ม.)`,
+        ? `นอกพื้นที่ ห่าง ${Math.round(distance)} ม.${poorGps ? ' (โดยประมาณ)' : ''}`
+        : 'อยู่นอกพื้นที่วิทยาลัย',
     }
   })()
 
